@@ -92,7 +92,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
   - Requisitos: R4.3
   - Pronto quando: `tests/integration/dashboard/test_inventario.py` passa (contagens e situação cadastral; nenhum campo pessoal; escopo; filtros)
 
-- [ ] T14. Histórico da unidade pela view (com 008/T2)
+- [x] T14. Histórico da unidade pela view (com 008/T2)
   - `unit_history.sql` sobre `vw_unit_history` na rota `GET /unidades/{id}/historico` da 008.
   - Bloqueada por: T4, 003/T4
   - Requisitos: R4.5
