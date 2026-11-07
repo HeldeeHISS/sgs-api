@@ -245,7 +245,7 @@ sequenceDiagram
 | `POST /api/v1/admin/diretorio/sincronizar` · `GET .../execucoes` | `diretorio:sync` | 004 |
 | `GET/POST/PATCH /api/v1/unidades` (+ equipamentos, serviços, referências) | `unidade:*`, `equipamento:write`, `servico:write` | 006 |
 | `GET/POST/PATCH /api/v1/validacao/regras` · `/simular` · `/revalidar` | `regra_validacao:manage` | 007 |
-| `GET /api/v1/unidades/{id}/historico` · `/auditoria/eventos` · `/auditoria/verificar` | `auditoria:read` | 008 |
+| `GET /api/v1/unidades/{id}/historico` · `/auditoria/eventos` · `/auditoria/verificar` | `auditoria:read` (o histórico, no escopo da unidade) | 008 (o histórico, adiantado pela 011/R4.5) |
 | `GET /api/v1/dashboard/resumo` | `dashboard:read` | 009 |
 | `POST /api/v1/relatorios` · `GET /{id}` · `GET /{id}/download` | `relatorio:*` | 005 |
 | `GET /health/live` · `/health/ready` | pública | 001 |
