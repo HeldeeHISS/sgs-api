@@ -54,7 +54,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
   - Requisitos: R7.1, R7.2, R7.3, R7.4, R7.5, R7.6
   - Pronto quando: `tests/integration/audit/test_log_banco.py` (INSERT/UPDATE/DELETE com de/para; superusuário → `via_api = false`; login da API → `true`; `manager_name` mascarado; só `pending_issues` → nenhuma linha; SET NULL e CASCADE geram linhas das filhas) e `tests/integration/audit/test_log_banco_privilegios.py` (login da API sem INSERT, UPDATE, DELETE e TRUNCATE) passam
 
-- [ ] T8. Procedimento com cursor das partições e comando administrativo
+- [x] T8. Procedimento com cursor das partições e comando administrativo
   - `sp_ensure_monthly_partitions` (cursor explícito, `LOCK` da DEFAULT, `format('%I'/'%L')`, sem DROP), `CALL` na migração com 12 meses e `sgs-admin banco particoes [--meses N]` (cria o ponto de entrada `sgs-admin` com `argparse` se a 002 ainda não o tiver criado).
   - Bloqueada por: T7
   - Requisitos: R6.5, R6.6, R6.7, R6.8, R10.1
@@ -74,7 +74,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
 
 ## Rotas (exigem `require` e `EscopoLeitura` da 003)
 
-- [ ] T11. Consultas com anti join e full outer join
+- [x] T11. Consultas com anti join e full outer join
   - `units_without_services.sql`, `unit_equipment_reconciliation.sql` (lados filtrados antes da junção), porta `ConsultasDashboard`, conferência de filtros contra as referências, rotas e schemas.
   - Bloqueada por: T4, 003/T4
   - Requisitos: R2.1, R2.2, R2.5, R2.6, R2.7, R2.8, R2.9
