@@ -22,6 +22,7 @@ from src.modules.access.application.autorizacao import (
     Alvo,
     Recurso,
     UsuarioAtual,
+    escopo_de_leitura,
     exigir_na_area,
     exigir_no_escopo,
 )
@@ -31,6 +32,16 @@ from src.modules.audit.application.registrar import (
     Entidade,
     Mudanca,
     registrar,
+)
+from src.modules.registry.domain.busca import (
+    DetalheDaUnidade,
+    EquipamentoDaUnidade,
+    FiltrosDeUnidades,
+    Ordenacao,
+    PaginaDeUnidades,
+    PaginaPedida,
+    ServicoDaUnidade,
+    ordem_efetiva,
 )
 from src.modules.registry.domain.ports import RepositorioDeUnidades
 from src.modules.registry.domain.unidade import (
@@ -45,11 +56,23 @@ from src.modules.registry.domain.unidade import (
 # Reexportados para a camada api, que só importa a application.
 __all__ = [
     "DadosDaUnidade",
+    "DetalheDaUnidade",
+    "EquipamentoDaUnidade",
+    "FiltrosDeUnidades",
+    "Ordenacao",
+    "PaginaDeUnidades",
+    "PaginaPedida",
+    "ServicoDaUnidade",
     "Unidade",
     "atualizar_unidade",
+    "buscar_unidades",
     "criar_unidade",
     "desativar_unidade",
+    "detalhar_unidade",
 ]
+
+# Permissão de leitura das unidades (matriz da 003).
+LEITURA = "unidade:read"
 
 # Nomes da API dos campos estruturais, para o 403 apontá-los (006/R3.4).
 _CAMPO_DA_API = {"district_id": "distrito_id", "unit_type_id": "tipo_unidade_id", "cnes": "cnes"}
@@ -201,6 +224,34 @@ async def desativar_unidade(
             metadados={"motivo": motivo},
         )
     return desativacao.unidade
+
+
+async def buscar_unidades(
+    filtros: FiltrosDeUnidades,
+    ordem: Ordenacao | None,
+    pagina: PaginaPedida,
+    *,
+    usuario: UsuarioAtual,
+    unidades: RepositorioDeUnidades,
+) -> PaginaDeUnidades:
+    """Uma página das unidades no escopo de leitura do usuário (006/R2.6) que passam pelos
+    filtros (R2.2, R2.3), na ordem pedida (R2.4), com o total (R2.1). Sem ordem pedida, a mais
+    parecida com o texto livre vem primeiro, se houver texto; senão, por nome (design § Busca).
+    A permissão já foi conferida pelo `require` da rota; aqui só se limita o escopo."""
+    escopo = escopo_de_leitura(usuario, LEITURA)
+    return await unidades.buscar(escopo, filtros, ordem_efetiva(ordem, filtros), pagina)
+
+
+async def detalhar_unidade(
+    unidade_id: UUID, *, unidades: RepositorioDeUnidades
+) -> DetalheDaUnidade:
+    """A unidade com os equipamentos e serviços vinculados (006/R2.5). A permissão e o escopo
+    sobre ela já foram conferidos pelo `require` da rota (R2.6). Levanta `NotFound` (404) se ela
+    não existe."""
+    detalhe = await unidades.detalhar(unidade_id)
+    if detalhe is None:
+        raise NotFound("O recurso pedido não existe.")
+    return detalhe
 
 
 def _inexistente(campo: str, referencia: str) -> FieldError:

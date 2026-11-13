@@ -16,7 +16,7 @@
   - Bloqueada por: T1, T2, 003/T4
   - Requisitos: R1.1–R1.6
   - Pronto quando: `tests/integration/registry/test_criar_unidade.py` passa
-- [ ] T4. Listar, buscar, filtrar, ordenar e detalhar com escopo
+- [x] T4. Listar, buscar, filtrar, ordenar e detalhar com escopo
   - Bloqueada por: T1, 003/T4
   - Requisitos: R2.1–R2.6
   - Pronto quando: `tests/integration/registry/test_buscar_unidades.py` passa
