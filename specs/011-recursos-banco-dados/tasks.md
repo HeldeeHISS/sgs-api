@@ -110,7 +110,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
   - Requisitos: R6.2, R6.3, R6.4
   - Pronto quando: `tests/integration/registry/test_desativar.py` passa (200 com `unidade.desativada` e motivo; 404 sem mensagem do banco; já inativa → 200 sem auditoria)
 
-- [ ] T17. Versão invalidada por alteração fora da API (com 006/T5)
+- [x] T17. Versão invalidada por alteração fora da API (com 006/T5)
   - Caso de uso da 006 sem incrementar `version`, com `WHERE version = :esperada RETURNING version`.
   - Bloqueada por: T5, 006/T3
   - Requisitos: R8.3

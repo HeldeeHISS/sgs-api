@@ -29,10 +29,10 @@ class AppError(Exception):
     type: ClassVar[str] = "urn:sgs:problema:requisicao-invalida"
     title: ClassVar[str] = "Requisição inválida"
 
-    def __init__(self, detail: str, *, extensoes: Mapping[str, str] | None = None) -> None:
+    def __init__(self, detail: str, *, extensoes: Mapping[str, object] | None = None) -> None:
         super().__init__(detail)
         self.detail = detail
-        self.extensoes: Mapping[str, str] = MappingProxyType(dict(extensoes or {}))
+        self.extensoes: Mapping[str, object] = MappingProxyType(dict(extensoes or {}))
 
 
 class NotFound(AppError):
@@ -51,6 +51,22 @@ class Conflict(AppError):
     status = 409
     type = "urn:sgs:problema:conflito"
     title = "Conflito"
+
+
+class PreconditionFailed(AppError):
+    """412: a versão do `If-Match` não é mais a atual do recurso (006/R3.2)."""
+
+    status = 412
+    type = "urn:sgs:problema:versao-desatualizada"
+    title = "Versão desatualizada"
+
+
+class PreconditionRequired(AppError):
+    """428: a alteração exige `If-Match` com a versão em mãos (006/R3.2; RFC 6585, § 3)."""
+
+    status = 428
+    type = "urn:sgs:problema:versao-exigida"
+    title = "Versão exigida"
 
 
 class DomainValidationError(AppError):

@@ -20,7 +20,7 @@
   - Bloqueada por: T1, 003/T4
   - Requisitos: R2.1–R2.6
   - Pronto quando: `tests/integration/registry/test_buscar_unidades.py` passa
-- [ ] T5. Atualizar com `If-Match`, escopo, campos estruturais e auditoria por campo
+- [x] T5. Atualizar com `If-Match`, escopo, campos estruturais e auditoria por campo
   - Bloqueada por: T3, 011/T5
   - Sem incrementar `version` (trigger da 011); no mesmo PR da 011/T17.
   - Requisitos: R3.1–R3.6
