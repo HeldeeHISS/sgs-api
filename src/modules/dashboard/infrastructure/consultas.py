@@ -19,8 +19,10 @@ from src.modules.dashboard.domain.consultas import (
     DistritosCnes,
     Filtros,
     ItemConciliacao,
+    ItemInventario,
     Pagina,
     Resultado,
+    SituacaoCadastral,
     SituacaoConciliacao,
     UnidadeForaCnes,
     UnidadeResumo,
@@ -33,6 +35,7 @@ _UNIDADES_SEM_SERVICO = consulta(_SQL / "units_without_services.sql")
 _CONCILIACAO_UNIDADE_EQUIPAMENTO = consulta(_SQL / "unit_equipment_reconciliation.sql")
 _DISTRITOS_CNES_ACIMA_DA_REDE = consulta(_SQL / "districts_cnes_above_network.sql")
 _UNIDADES_COM_SERVICO_FORA_CNES = consulta(_SQL / "units_with_services_outside_cnes.sql")
+_INVENTARIO = consulta(_SQL / "unit_inventory.sql")
 # Conferência dos filtros contra as referências da 006, antes da consulta (011/R2.9).
 _DISTRITO_EXISTE = consulta(_SQL / "district_exists.sql")
 _TIPO_DE_UNIDADE_EXISTE = consulta(_SQL / "unit_type_exists.sql")
@@ -115,6 +118,33 @@ class SqlConsultasDashboard:
                 for linha in linhas
                 if linha["district_id"] is not None
             ),
+        )
+
+    async def inventario(
+        self, escopo: EscopoDeLeitura, filtros: Filtros, pagina: Pagina
+    ) -> Resultado[ItemInventario]:
+        linhas, total = await self._pagina(_INVENTARIO, escopo, filtros, pagina)
+        return Resultado(
+            itens=tuple(
+                ItemInventario(
+                    id=linha["unit_id"],
+                    nome=linha["name"],
+                    cnes=linha["cnes"],
+                    status=linha["status"],
+                    situacao_cadastral=SituacaoCadastral(linha["registration_status"]),
+                    tipo_id=linha["unit_type_id"],
+                    tipo=linha["unit_type_name"],
+                    area_tecnica_id=linha["technical_area_id"],
+                    area_tecnica=linha["technical_area_name"],
+                    distrito_id=linha["district_id"],
+                    distrito=linha["district_name"],
+                    equipamentos=linha["equipment_count"],
+                    servicos=linha["service_count"],
+                    servicos_fora_cnes=linha["services_outside_cnes_count"],
+                )
+                for linha in linhas
+            ),
+            total=total,
         )
 
     async def _pagina(

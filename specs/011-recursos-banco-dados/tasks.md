@@ -86,7 +86,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
   - Requisitos: R2.3, R2.4, R2.5, R2.7, R2.8, R2.9
   - Pronto quando: `tests/integration/dashboard/test_consultas_qualidade.py::test_distritos_cnes*` e `::test_fora_cnes*` passam (com escopo distrital, a rede é só o distrito)
 
-- [ ] T13. Inventário
+- [x] T13. Inventário
   - `unit_inventory.sql` sobre a view, rota e schema.
   - Bloqueada por: T4, T11
   - Requisitos: R4.3

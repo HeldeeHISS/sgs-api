@@ -11,6 +11,7 @@ from src.modules.dashboard.domain.consultas import (
     DistritosCnes,
     Filtros,
     ItemConciliacao,
+    ItemInventario,
     Pagina,
     Resultado,
     UnidadeForaCnes,
@@ -73,4 +74,11 @@ class ConsultasDashboard(Protocol):
     ) -> Resultado[UnidadeForaCnes]:
         """Unidades com ao menos um serviço fora do CNES, e quantos (011/R2.4), por distrito e
         nome."""
+        ...
+
+    async def inventario(
+        self, escopo: EscopoDeLeitura, filtros: Filtros, pagina: Pagina
+    ) -> Resultado[ItemInventario]:
+        """Inventário da rede pela `vw_unit_inventory` (011/R4.1, R4.3), unidades em qualquer
+        status, por distrito e nome."""
         ...

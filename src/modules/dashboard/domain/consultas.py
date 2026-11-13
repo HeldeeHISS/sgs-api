@@ -96,3 +96,33 @@ class DistritosCnes:
 
     percentual_rede: float | None
     distritos: tuple[DistritoCnes, ...]
+
+
+class SituacaoCadastral(StrEnum):
+    """Situação cadastral da unidade, por `fn_registration_status` (011/R5.3)."""
+
+    INATIVA = "inativa"
+    COM_PENDENCIAS = "com_pendencias"
+    SEM_CNES = "sem_cnes"
+    REGULAR = "regular"
+
+
+@dataclass(frozen=True, slots=True)
+class ItemInventario:
+    """Uma unidade no inventário da rede (011/R4.1): referências por id e nome e as quantidades de
+    equipamentos, serviços e serviços fora do CNES. Sem dado pessoal (011/R4.2)."""
+
+    id: UUID
+    nome: str
+    cnes: str | None
+    status: str
+    situacao_cadastral: SituacaoCadastral
+    tipo_id: int
+    tipo: str
+    area_tecnica_id: int
+    area_tecnica: str
+    distrito_id: int
+    distrito: str
+    equipamentos: int
+    servicos: int
+    servicos_fora_cnes: int
