@@ -127,3 +127,20 @@ class Unidade(DadosDaUnidade):
     def campos_de_negocio(self) -> dict[str, object]:
         """Campo → valor, só os de `DadosDaUnidade` (o que a auditoria e o `diff` comparam)."""
         return {campo: getattr(self, campo) for campo in CAMPOS_DE_NEGOCIO}
+
+
+STATUS_INATIVA = "inativa"
+"""Status da unidade desativada (006/R4.1). A unidade nunca é apagada (R4.2)."""
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Desativacao:
+    """O que a desativação fez: o status que a unidade tinha e como ela ficou (011/R6.1)."""
+
+    status_anterior: str
+    unidade: Unidade
+
+    @property
+    def mudou(self) -> bool:
+        """Se o status mudou. Unidade que já estava inativa fica como está (011/R6.4)."""
+        return self.status_anterior != STATUS_INATIVA

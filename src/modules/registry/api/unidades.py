@@ -1,19 +1,21 @@
 """Rotas da unidade de saúde (design da 006 § Rotas)."""
 
 from typing import Annotated, Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, Response
 
 from src.core.ids import uuid7
 from src.core.problem import PROBLEM_JSON
 from src.modules.access.api.deps import (
+    ResourceRef,
     SessaoDeNegocio,
     UsuarioAtual,
     ator_da_requisicao,
     require,
 )
-from src.modules.registry.api.schemas import UnidadeCreate, UnidadeOut
-from src.modules.registry.application.unidades import criar_unidade
+from src.modules.registry.api.schemas import UnidadeCreate, UnidadeDesativacao, UnidadeOut
+from src.modules.registry.application.unidades import criar_unidade, desativar_unidade
 
 router = APIRouter(prefix="/api/v1", tags=["unidades"])
 
@@ -52,5 +54,39 @@ async def criar(
         auditoria=estado.auditoria(sessao),
     )
     response.headers["Location"] = f"/api/v1/unidades/{unidade.id}"
+    response.headers["ETag"] = f'"{unidade.version}"'
+    return UnidadeOut.de(unidade)
+
+
+@router.post(
+    "/unidades/{id}/desativar",
+    summary="Desativar unidade de saúde",
+    responses={
+        401: _problema("Sem access token válido"),
+        403: _problema("Sem `unidade:deactivate` no escopo da unidade"),
+        404: _problema("A unidade não existe"),
+        422: _problema("Motivo ausente ou inválido"),
+    },
+)
+async def desativar(
+    request: Request,
+    response: Response,
+    id: UUID,
+    corpo: UnidadeDesativacao,
+    usuario: Annotated[
+        UsuarioAtual, Depends(require("unidade:deactivate", ResourceRef("unidade")))
+    ],
+    sessao: SessaoDeNegocio,
+) -> UnidadeOut:
+    """006/R4, 011/R6.1 a R6.4. Responde com a unidade inativa e o `ETag` da versão. Já inativa,
+    responde igual, sem alterar nada nem auditar."""
+    estado = request.app.state
+    unidade = await desativar_unidade(
+        id,
+        motivo=corpo.motivo,
+        ator=ator_da_requisicao(request, usuario),
+        unidades=estado.repositorio_de_unidades(sessao),
+        auditoria=estado.auditoria(sessao),
+    )
     response.headers["ETag"] = f'"{unidade.version}"'
     return UnidadeOut.de(unidade)
