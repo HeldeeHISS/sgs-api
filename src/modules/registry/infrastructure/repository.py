@@ -9,10 +9,16 @@ from uuid import UUID
 
 from sqlalchemy import RowMapping, bindparam
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.sql import consulta
-from src.modules.registry.domain.unidade import CAMPOS_DE_NEGOCIO, DadosDaUnidade, Unidade
+from src.modules.registry.domain.unidade import (
+    CAMPOS_DE_NEGOCIO,
+    DadosDaUnidade,
+    Desativacao,
+    Unidade,
+)
 
 _SQL = Path(__file__).parent / "sql"
 
@@ -24,6 +30,11 @@ _AREA_DO_TIPO = consulta(_SQL / "unit_type_technical_area.sql")
 _DISTRITO_ATIVO = consulta(_SQL / "district_is_active.sql")
 _ID_PELO_CNES = consulta(_SQL / "health_unit_id_by_cnes.sql")
 _ID_PELO_NOME = consulta(_SQL / "health_unit_id_by_name.sql")
+_DESATIVAR = consulta(_SQL / "deactivate_health_unit.sql")
+_UNIDADE_PELO_ID = consulta(_SQL / "health_unit_by_id.sql")
+
+# SQLSTATE próprio que o `sp_deactivate_unit` levanta para unidade inexistente (0011_06).
+_UNIDADE_INEXISTENTE = "SGS01"
 
 
 class SqlRepositorioDeUnidades:
@@ -52,6 +63,19 @@ class SqlRepositorioDeUnidades:
             _ID_PELO_NOME, {"district_id": district_id, "name": name}
         )
         return unidade
+
+    async def desativar(self, id_: UUID) -> Desativacao | None:
+        try:
+            resultado = await self._session.execute(_DESATIVAR, {"id": id_})
+        except DBAPIError as erro:
+            # Só o "não existe" do procedimento vira `None`; a mensagem do banco não sai daqui
+            # (011/R6.3). Qualquer outro erro segue adiante, e a requisição responde 500.
+            if getattr(erro.orig, "sqlstate", None) == _UNIDADE_INEXISTENTE:
+                return None
+            raise
+        status_anterior: str = resultado.one().o_previous_status
+        linha = (await self._session.execute(_UNIDADE_PELO_ID, {"id": id_})).mappings().one()
+        return Desativacao(status_anterior=status_anterior, unidade=_unidade(linha))
 
 
 def _unidade(linha: RowMapping) -> Unidade:
