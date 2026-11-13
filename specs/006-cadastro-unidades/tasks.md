@@ -30,7 +30,7 @@
   - Pelo `sp_deactivate_unit` da 011; no mesmo PR da 011/T16.
   - Requisitos: R4.1, R4.2
   - Pronto quando: `tests/integration/registry/test_desativar_unidade.py` passa
-- [ ] T7. Equipamentos (vinculados e sem unidade)
+- [x] T7. Equipamentos (vinculados e sem unidade)
   - Bloqueada por: T3
   - Requisitos: R5.1–R5.3
   - Pronto quando: `tests/integration/registry/test_equipamentos.py` passa

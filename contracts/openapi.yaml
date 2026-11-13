@@ -317,6 +317,395 @@
         }
       }
     },
+    "/api/v1/unidades/{id}/equipamentos": {
+      "get": {
+        "tags": [
+          "equipamentos"
+        ],
+        "summary": "Listar equipamentos da unidade",
+        "description": "006/R5.1: os equipamentos da unidade, pela ordem de cadastro.",
+        "operationId": "listar_api_v1_unidades__id__equipamentos_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EquipamentoOut"
+                  },
+                  "title": "Response Listar Api V1 Unidades  Id  Equipamentos Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `unidade:read` no escopo da unidade",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "A unidade não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "equipamentos"
+        ],
+        "summary": "Adicionar equipamento à unidade",
+        "description": "006/R5.1, R5.3: grava o equipamento na unidade e audita `unidade.equipamento_criado`.",
+        "operationId": "adicionar_api_v1_unidades__id__equipamentos_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EquipamentoCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EquipamentoOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `equipamento:write` no escopo da unidade",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "A unidade não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, ou tipo de equipamento inexistente ou desativado",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/unidades/{id}/equipamentos/{eid}": {
+      "patch": {
+        "tags": [
+          "equipamentos"
+        ],
+        "summary": "Alterar equipamento da unidade",
+        "description": "006/R5.1, R5.3: aplica só os campos enviados e audita `unidade.equipamento_atualizado`\ncom o que mudou; sem mudança, responde igual, sem alterar nem auditar.",
+        "operationId": "alterar_api_v1_unidades__id__equipamentos__eid__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "eid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Eid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EquipamentoUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EquipamentoOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `equipamento:write` no escopo da unidade",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "A unidade ou o equipamento dela não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, ou tipo de equipamento inexistente ou desativado",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "equipamentos"
+        ],
+        "summary": "Remover equipamento da unidade",
+        "description": "006/R5.1, R5.3: apaga o equipamento (os serviços dele ficam na unidade, 011/R9.1) e\naudita `unidade.equipamento_removido`.",
+        "operationId": "remover_api_v1_unidades__id__equipamentos__eid__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "eid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Eid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `equipamento:write` no escopo da unidade",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "A unidade ou o equipamento dela não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/equipamentos": {
+      "get": {
+        "tags": [
+          "equipamentos"
+        ],
+        "summary": "Listar equipamentos sem unidade",
+        "description": "006/R5.2: os equipamentos sem unidade, pela ordem de cadastro, só para o Gestor de\nDados.",
+        "operationId": "listar_sem_unidade__api_v1_equipamentos_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EquipamentoOut"
+                  },
+                  "type": "array",
+                  "title": "Response Listar Sem Unidade  Api V1 Equipamentos Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `equipamento:write` global",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "equipamentos"
+        ],
+        "summary": "Cadastrar equipamento sem unidade",
+        "description": "006/R5.2: grava o equipamento sem unidade, como a UTI móvel, e audita\n`equipamento.criado`.",
+        "operationId": "adicionar_sem_unidade_api_v1_equipamentos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EquipamentoCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EquipamentoOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `equipamento:write` global",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, ou tipo de equipamento inexistente ou desativado",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/referencias/distritos": {
       "get": {
         "tags": [
@@ -2366,6 +2755,210 @@
         "title": "DistritosCnesOut",
         "description": "Percentual de unidades sem CNES da rede (as unidades no escopo e no filtro; nulo se não há\nnenhuma) e os distritos acima dele, do maior para o menor percentual."
       },
+      "EquipamentoCreate": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Nome"
+          },
+          "cnes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9]{7}$",
+                "description": "Sete dígitos."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnes"
+          },
+          "tipo_equipamento_codigo": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Tipo Equipamento Codigo",
+            "description": "Código do tipo de equipamento."
+          },
+          "quantidade": {
+            "type": "integer",
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
+            "title": "Quantidade",
+            "default": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ativo",
+              "inativo",
+              "em_implantacao"
+            ],
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "nome",
+          "tipo_equipamento_codigo",
+          "status"
+        ],
+        "title": "EquipamentoCreate",
+        "description": "Equipamento novo: nome, tipo e status obrigatórios; sem quantidade, vale 1."
+      },
+      "EquipamentoOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "unidade_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unidade Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "cnes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnes"
+          },
+          "tipo_equipamento_codigo": {
+            "type": "string",
+            "title": "Tipo Equipamento Codigo"
+          },
+          "quantidade": {
+            "type": "integer",
+            "title": "Quantidade"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Atualizado Em"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "unidade_id",
+          "nome",
+          "cnes",
+          "tipo_equipamento_codigo",
+          "quantidade",
+          "status",
+          "criado_em",
+          "atualizado_em"
+        ],
+        "title": "EquipamentoOut",
+        "description": "O equipamento; `unidade_id` nulo é o equipamento sem unidade (006/R5.2)."
+      },
+      "EquipamentoUpdate": {
+        "properties": {
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome"
+          },
+          "cnes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9]{7}$",
+                "description": "Sete dígitos."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnes"
+          },
+          "tipo_equipamento_codigo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50,
+                "minLength": 1,
+                "description": "Código do tipo de equipamento."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo Equipamento Codigo"
+          },
+          "quantidade": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2147483647.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantidade"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ativo",
+                  "inativo",
+                  "em_implantacao"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "EquipamentoUpdate",
+        "description": "Alteração parcial: só os campos enviados mudam. CNES nulo é apagado; os obrigatórios do\ncadastro podem faltar, mas não vir nulos. A unidade do equipamento não muda por aqui."
+      },
       "EventoHistoricoOut": {
         "properties": {
           "id": {
@@ -2437,6 +3030,19 @@
         ],
         "title": "EventoHistoricoOut",
         "description": "Um evento da unidade (ou de um equipamento ou serviço dela): data e hora, autor com os\npapéis no momento, ação e a lista {campo, de, para} (008/R1.2, 011/R4.4). Sem autor (tarefa\ndo sistema), `autor_id` e `autor_nome` vêm nulos."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
       },
       "HealthStatus": {
         "properties": {
@@ -3685,6 +4291,46 @@
         "type": "object",
         "title": "UnidadeUpdate",
         "description": "Alteração parcial da unidade (006/R3.1): só os campos enviados mudam. Mesmo formato do\n`UnidadeCreate`; um campo opcional enviado nulo é apagado (CNES nulo deixa a unidade\npendente, R1.5), e um obrigatório não pode vir nulo. Corpo vazio não muda nada (R3.6)."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
       }
     },
     "securitySchemes": {

@@ -7,6 +7,7 @@ dependência `SessaoDeNegocio` da camada api): quem chama abre, confirma ou desf
 from typing import Protocol
 from uuid import UUID
 
+from src.modules.registry.domain.equipamento import DadosDoEquipamento, Equipamento
 from src.modules.registry.domain.referencia import (
     Alteracao,
     DadosDaReferencia,
@@ -87,4 +88,37 @@ class RepositorioDeUnidades(Protocol):
         """Desativa a unidade pelo procedimento do banco, `sp_deactivate_unit` (011/R6.1), e a
         devolve como ficou, com o status que tinha. Já inativa, nada muda (011/R6.4). `None` se
         ela não existe (011/R6.3)."""
+        ...
+
+
+class RepositorioDeEquipamentos(Protocol):
+    async def tipo_ativo(self, codigo: str) -> bool:
+        """Se o tipo de equipamento com esse código existe e está ativo."""
+        ...
+
+    async def da_unidade(self, unit_id: UUID) -> list[Equipamento]:
+        """Os equipamentos da unidade, pelo id."""
+        ...
+
+    async def sem_unidade(self) -> list[Equipamento]:
+        """Os equipamentos sem unidade (006/R5.2), pelo id."""
+        ...
+
+    async def ler(self, id_: UUID) -> Equipamento | None:
+        """O equipamento como está no banco; `None` se ele não existe."""
+        ...
+
+    async def inserir(
+        self, id_: UUID, unit_id: UUID | None, dados: DadosDoEquipamento
+    ) -> Equipamento:
+        """Grava o equipamento novo, da unidade ou sem unidade, e o devolve como ficou."""
+        ...
+
+    async def atualizar(self, id_: UUID, dados: DadosDoEquipamento) -> Equipamento | None:
+        """Grava os dados no equipamento e o devolve como ficou; `None` se ele não existe."""
+        ...
+
+    async def remover(self, id_: UUID) -> bool:
+        """Apaga o equipamento (exclusão física, decisão U5 da 011); os serviços dele ficam na
+        unidade, sem equipamento (011/R9.1). `False` se ele não existe."""
         ...
