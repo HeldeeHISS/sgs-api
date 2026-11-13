@@ -10,6 +10,7 @@ from src.modules.audit.domain.historico import (
     Pagina,
     Resultado,
 )
+from src.modules.audit.domain.log_banco import AlteracaoBanco, FiltrosDoLog, ParticaoDoLog
 
 
 class AuditStore(Protocol):
@@ -33,4 +34,18 @@ class HistoricoDeUnidades(Protocol):
     ) -> Resultado[EventoDoHistorico]:
         """Eventos da unidade e dos seus equipamentos e serviços que passam nos filtros
         (008/R1.3), do mais recente ao mais antigo (008/R1.1)."""
+        ...
+
+
+class LogDoBanco(Protocol):
+    """Leitura do log do banco (`db_change_log`, 011/R7) sobre a sessão de quem o consulta; a
+    aplicação só lê o log (011/R7.6)."""
+
+    async def listar(self, filtros: FiltrosDoLog, pagina: Pagina) -> Resultado[AlteracaoBanco]:
+        """Registros do log que passam nos filtros, do mais recente para o mais antigo
+        (011/R7.7)."""
+        ...
+
+    async def particoes(self) -> tuple[ParticaoDoLog, ...]:
+        """Partições do log com o intervalo e a quantidade de registros (011/R6.9)."""
         ...

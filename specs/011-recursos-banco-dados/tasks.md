@@ -60,7 +60,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
   - Requisitos: R6.5, R6.6, R6.7, R6.8, R10.1
   - Pronto quando: `tests/integration/audit/test_particoes.py` (cria os meses faltantes; não apaga nada; DEFAULT com linha de um mês → aviso e mês pulado; a migração deixa 12 meses à frente; login da API não executa o procedimento) e `tests/integration/tools/test_sgs_admin_particoes.py` passam
 
-- [ ] T9. Prova de uso dos índices com volume
+- [x] T9. Prova de uso dos índices com volume
   - Fixture de volume (1.000 unidades, ~3.000 serviços, trilha pelo `audit.registrar`) e `EXPLAIN` registrado no cabeçalho dos `.sql` dos índices.
   - Bloqueada por: T3
   - Requisitos: R1.3, R1.4
@@ -80,13 +80,13 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
   - Requisitos: R2.1, R2.2, R2.5, R2.6, R2.7, R2.8, R2.9
   - Pronto quando: `tests/integration/dashboard/test_consultas_qualidade.py::test_unidades_sem_servico*` e `::test_conciliacao*` passam (resultado igual ao semeado; escopo distrital reduz; equipamento sem unidade só com escopo global; 403; 422 com distrito inexistente)
 
-- [ ] T12. Consultas com subconsulta
+- [x] T12. Consultas com subconsulta
   - `districts_cnes_above_network.sql` (escalar no `HAVING`, "rede" no escopo) e `units_with_services_outside_cnes.sql` (`EXISTS`), rotas e schemas.
   - Bloqueada por: T11
   - Requisitos: R2.3, R2.4, R2.5, R2.7, R2.8, R2.9
   - Pronto quando: `tests/integration/dashboard/test_consultas_qualidade.py::test_distritos_cnes*` e `::test_fora_cnes*` passam (com escopo distrital, a rede é só o distrito)
 
-- [ ] T13. Inventário
+- [x] T13. Inventário
   - `unit_inventory.sql` sobre a view, rota e schema.
   - Bloqueada por: T4, T11
   - Requisitos: R4.3
@@ -98,7 +98,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
   - Requisitos: R4.5
   - Pronto quando: `tests/integration/audit/test_historico_unidade.py` passa (eventos da unidade, de seus equipamentos e serviços, com autor; 403 fora do escopo)
 
-- [ ] T15. Log do banco e partições na API
+- [x] T15. Log do banco e partições na API
   - `db_change_log_list.sql`, `db_change_log_partitions.sql`, rotas `GET /auditoria/banco` e `/auditoria/banco/particoes`.
   - Bloqueada por: T8, 003/T4
   - Requisitos: R6.9, R7.7, R7.8

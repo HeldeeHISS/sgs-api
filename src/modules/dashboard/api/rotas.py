@@ -12,7 +12,13 @@ from fastapi import APIRouter, Depends, Query, Request
 from src.core.paginacao import TAMANHO_PADRAO, NumeroDaPagina, PaginaOut, TamanhoDaPagina
 from src.core.problem import PROBLEM_JSON
 from src.modules.access.api.deps import UsuarioAtual, require
-from src.modules.dashboard.api.schemas import ConciliacaoOut, UnidadeResumoOut
+from src.modules.dashboard.api.schemas import (
+    ConciliacaoOut,
+    DistritosCnesOut,
+    InventarioOut,
+    UnidadeForaCnesOut,
+    UnidadeResumoOut,
+)
 from src.modules.dashboard.application import consultas
 from src.modules.dashboard.application.consultas import ConsultasDashboard, Filtros, Pagina
 
@@ -33,6 +39,12 @@ Leitor = Annotated[UsuarioAtual, Depends(require(consultas.PERMISSAO))]
 _ID_DE_REFERENCIA_MAXIMO = 32767
 
 
+TipoDeUnidade = Annotated[
+    int | None,
+    Query(ge=1, le=_ID_DE_REFERENCIA_MAXIMO, description="Id do tipo de unidade."),
+]
+
+
 @dataclass(frozen=True, slots=True)
 class _Pedido:
     filtros: Filtros
@@ -44,10 +56,7 @@ def _pedido(
         int | None,
         Query(ge=1, le=_ID_DE_REFERENCIA_MAXIMO, description="Id do distrito sanitário."),
     ] = None,
-    tipo: Annotated[
-        int | None,
-        Query(ge=1, le=_ID_DE_REFERENCIA_MAXIMO, description="Id do tipo de unidade."),
-    ] = None,
+    tipo: TipoDeUnidade = None,
     pagina: NumeroDaPagina = 1,
     tamanho: TamanhoDaPagina = TAMANHO_PADRAO,
 ) -> _Pedido:
@@ -95,6 +104,58 @@ async def conciliacao_unidade_equipamento(
         )
     return PaginaOut(
         itens=[ConciliacaoOut.model_validate(item) for item in resultado.itens],
+        total=resultado.total,
+        pagina=pedido.pagina.numero,
+        tamanho=pedido.pagina.tamanho,
+    )
+
+
+@router.get(
+    "/distritos-cnes-acima-da-media",
+    summary="Distritos com mais unidades sem CNES que a rede (subconsulta escalar)",
+)
+async def distritos_cnes_acima_da_media(
+    request: Request, usuario: Leitor, tipo: TipoDeUnidade = None
+) -> DistritosCnesOut:
+    """011/R2.3, R2.5: distritos cujo percentual de unidades sem CNES passa o da rede, que é o
+    conjunto de unidades no escopo de leitura do usuário (e no filtro de tipo)."""
+    async with request.app.state.sessoes() as sessao:
+        porta: ConsultasDashboard = request.app.state.consultas_dashboard(sessao)
+        resultado = await consultas.distritos_cnes_acima_da_rede(porta, usuario, Filtros(tipo=tipo))
+    return DistritosCnesOut.model_validate(resultado)
+
+
+@router.get(
+    "/unidades-servico-fora-cnes",
+    summary="Unidades com serviço fora do CNES (subconsulta EXISTS)",
+)
+async def unidades_servico_fora_cnes(
+    request: Request, usuario: Leitor, pedido: Pedido
+) -> PaginaOut[UnidadeForaCnesOut]:
+    """011/R2.4: unidades que ofertam ao menos um serviço fora do CNES, com a quantidade deles,
+    no escopo de leitura do usuário."""
+    async with request.app.state.sessoes() as sessao:
+        porta: ConsultasDashboard = request.app.state.consultas_dashboard(sessao)
+        resultado = await consultas.unidades_com_servico_fora_cnes(
+            porta, usuario, pedido.filtros, pedido.pagina
+        )
+    return PaginaOut(
+        itens=[UnidadeForaCnesOut.de(item) for item in resultado.itens],
+        total=resultado.total,
+        pagina=pedido.pagina.numero,
+        tamanho=pedido.pagina.tamanho,
+    )
+
+
+@router.get("/inventario", summary="Inventário da rede (view vw_unit_inventory)")
+async def inventario(request: Request, usuario: Leitor, pedido: Pedido) -> PaginaOut[InventarioOut]:
+    """011/R4.1 a R4.3: uma linha por unidade, com situação cadastral e contagens, a partir da view
+    de inventário, no escopo de leitura do usuário. Sem dado pessoal."""
+    async with request.app.state.sessoes() as sessao:
+        porta: ConsultasDashboard = request.app.state.consultas_dashboard(sessao)
+        resultado = await consultas.inventario(porta, usuario, pedido.filtros, pedido.pagina)
+    return PaginaOut(
+        itens=[InventarioOut.model_validate(item) for item in resultado.itens],
         total=resultado.total,
         pagina=pedido.pagina.numero,
         tamanho=pedido.pagina.tamanho,

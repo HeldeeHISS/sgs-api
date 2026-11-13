@@ -714,10 +714,548 @@
           }
         }
       }
+    },
+    "/api/v1/dashboard/consultas/distritos-cnes-acima-da-media": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Distritos com mais unidades sem CNES que a rede (subconsulta escalar)",
+        "description": "011/R2.3, R2.5: distritos cujo percentual de unidades sem CNES passa o da rede, que é o\nconjunto de unidades no escopo de leitura do usuário (e no filtro de tipo).",
+        "operationId": "distritos_cnes_acima_da_media_api_v1_dashboard_consultas_distritos_cnes_acima_da_media_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id do tipo de unidade.",
+              "title": "Tipo"
+            },
+            "description": "Id do tipo de unidade."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DistritosCnesOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `dashboard:read`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Filtro mal formado, ou distrito ou tipo inexistente",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/consultas/unidades-servico-fora-cnes": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Unidades com serviço fora do CNES (subconsulta EXISTS)",
+        "description": "011/R2.4: unidades que ofertam ao menos um serviço fora do CNES, com a quantidade deles,\nno escopo de leitura do usuário.",
+        "operationId": "unidades_servico_fora_cnes_api_v1_dashboard_consultas_unidades_servico_fora_cnes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "distrito",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id do distrito sanitário.",
+              "title": "Distrito"
+            },
+            "description": "Id do distrito sanitário."
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id do tipo de unidade.",
+              "title": "Tipo"
+            },
+            "description": "Id do tipo de unidade."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 1,
+              "description": "Página, a partir de 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Página, a partir de 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Itens por página (padrão 20, máximo 100).",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Itens por página (padrão 20, máximo 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaOut_UnidadeForaCnesOut_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `dashboard:read`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Filtro mal formado, ou distrito ou tipo inexistente",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/consultas/inventario": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Inventário da rede (view vw_unit_inventory)",
+        "description": "011/R4.1 a R4.3: uma linha por unidade, com situação cadastral e contagens, a partir da view\nde inventário, no escopo de leitura do usuário. Sem dado pessoal.",
+        "operationId": "inventario_api_v1_dashboard_consultas_inventario_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "distrito",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id do distrito sanitário.",
+              "title": "Distrito"
+            },
+            "description": "Id do distrito sanitário."
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id do tipo de unidade.",
+              "title": "Tipo"
+            },
+            "description": "Id do tipo de unidade."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 1,
+              "description": "Página, a partir de 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Página, a partir de 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Itens por página (padrão 20, máximo 100).",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Itens por página (padrão 20, máximo 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaOut_InventarioOut_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `dashboard:read`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Filtro mal formado, ou distrito ou tipo inexistente",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auditoria/banco": {
+      "get": {
+        "tags": [
+          "auditoria"
+        ],
+        "summary": "Log do banco: alterações do cadastro registradas pelo PostgreSQL",
+        "description": "011/R7.7: registros do log nos filtros pedidos, do mais recente para o mais antigo,\npaginados.",
+        "operationId": "listar_api_v1_auditoria_banco_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 1,
+              "description": "Página, a partir de 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Página, a partir de 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Itens por página (padrão 20, máximo 100).",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Itens por página (padrão 20, máximo 100)."
+          },
+          {
+            "name": "de",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Início do período, incluído (data e hora com fuso).",
+              "title": "De"
+            },
+            "description": "Início do período, incluído (data e hora com fuso)."
+          },
+          {
+            "name": "ate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Fim do período, incluído (data e hora com fuso).",
+              "title": "Ate"
+            },
+            "description": "Fim do período, incluído (data e hora com fuso)."
+          },
+          {
+            "name": "tabela",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TabelaDoCadastro"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tabela do cadastro alterada.",
+              "title": "Tabela"
+            },
+            "description": "Tabela do cadastro alterada."
+          },
+          {
+            "name": "fora_da_api",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Verdadeiro: só alterações feitas fora da API; falso: só as feitas pela API.",
+              "title": "Fora Da Api"
+            },
+            "description": "Verdadeiro: só alterações feitas fora da API; falso: só as feitas pela API."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaOut_AlteracaoBancoOut_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `auditoria:read` em escopo global",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Filtro ou paginação mal formados",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auditoria/banco/particoes": {
+      "get": {
+        "tags": [
+          "auditoria"
+        ],
+        "summary": "Partições do log do banco, com intervalo e registros",
+        "description": "011/R6.9: cada partição com o intervalo (`de` incluído, `ate` excluído; nulos na\nDEFAULT) e a quantidade de registros.",
+        "operationId": "particoes_api_v1_auditoria_banco_particoes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ParticaoOut"
+                  },
+                  "type": "array",
+                  "title": "Response Particoes Api V1 Auditoria Banco Particoes Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `auditoria:read` em escopo global",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
     "schemas": {
+      "AlteracaoBancoOut": {
+        "properties": {
+          "ocorrido_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ocorrido Em"
+          },
+          "tabela": {
+            "type": "string",
+            "title": "Tabela"
+          },
+          "operacao": {
+            "type": "string",
+            "title": "Operacao"
+          },
+          "linha_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Linha Id"
+          },
+          "colunas_alteradas": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/DeParaOut"
+            },
+            "type": "object",
+            "title": "Colunas Alteradas"
+          },
+          "usuario_banco": {
+            "type": "string",
+            "title": "Usuario Banco"
+          },
+          "via_api": {
+            "type": "boolean",
+            "title": "Via Api"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ocorrido_em",
+          "tabela",
+          "operacao",
+          "linha_id",
+          "colunas_alteradas",
+          "usuario_banco",
+          "via_api"
+        ],
+        "title": "AlteracaoBancoOut",
+        "description": "Um registro do log do banco (011/R7.1, R7.7). `via_api` falso é alteração feita fora da\nAPI, por outro usuário de banco ou por superusuário (011/R7.2)."
+      },
       "ConciliacaoOut": {
         "properties": {
           "unidade_id": {
@@ -805,6 +1343,82 @@
         "title": "ConciliacaoOut",
         "description": "Linha da conciliação unidade x equipamento; o lado que faltar vem nulo. `distrito` é o\nnome do distrito da unidade e `equipamento_tipo`, o nome do tipo do equipamento."
       },
+      "DeParaOut": {
+        "properties": {
+          "de": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "para": {
+            "$ref": "#/components/schemas/JsonValue"
+          }
+        },
+        "type": "object",
+        "title": "DeParaOut",
+        "description": "Valor de uma coluna antes (`de`) e depois (`para`) da alteração; nulo do lado que não\nexiste (inclusão ou exclusão). O nome do gestor vem mascarado (`\"***\"`, 011/R7.3)."
+      },
+      "DistritoCnesOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "total_unidades": {
+            "type": "integer",
+            "title": "Total Unidades"
+          },
+          "sem_cnes": {
+            "type": "integer",
+            "title": "Sem Cnes"
+          },
+          "percentual": {
+            "type": "number",
+            "title": "Percentual"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "total_unidades",
+          "sem_cnes",
+          "percentual"
+        ],
+        "title": "DistritoCnesOut",
+        "description": "Distrito acima da rede em unidades sem CNES; `percentual` de 0 a 100, duas casas."
+      },
+      "DistritosCnesOut": {
+        "properties": {
+          "percentual_rede": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percentual Rede"
+          },
+          "distritos": {
+            "items": {
+              "$ref": "#/components/schemas/DistritoCnesOut"
+            },
+            "type": "array",
+            "title": "Distritos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "percentual_rede",
+          "distritos"
+        ],
+        "title": "DistritosCnesOut",
+        "description": "Percentual de unidades sem CNES da rede (as unidades no escopo e no filtro; nulo se não há\nnenhuma) e os distritos acima dele, do maior para o menor percentual."
+      },
       "EventoHistoricoOut": {
         "properties": {
           "id": {
@@ -891,6 +1505,93 @@
         ],
         "title": "HealthStatus"
       },
+      "InventarioOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "cnes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnes"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "situacao_cadastral": {
+            "$ref": "#/components/schemas/SituacaoCadastral"
+          },
+          "tipo_id": {
+            "type": "integer",
+            "title": "Tipo Id"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "area_tecnica_id": {
+            "type": "integer",
+            "title": "Area Tecnica Id"
+          },
+          "area_tecnica": {
+            "type": "string",
+            "title": "Area Tecnica"
+          },
+          "distrito_id": {
+            "type": "integer",
+            "title": "Distrito Id"
+          },
+          "distrito": {
+            "type": "string",
+            "title": "Distrito"
+          },
+          "equipamentos": {
+            "type": "integer",
+            "title": "Equipamentos"
+          },
+          "servicos": {
+            "type": "integer",
+            "title": "Servicos"
+          },
+          "servicos_fora_cnes": {
+            "type": "integer",
+            "title": "Servicos Fora Cnes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "cnes",
+          "status",
+          "situacao_cadastral",
+          "tipo_id",
+          "tipo",
+          "area_tecnica_id",
+          "area_tecnica",
+          "distrito_id",
+          "distrito",
+          "equipamentos",
+          "servicos",
+          "servicos_fora_cnes"
+        ],
+        "title": "InventarioOut",
+        "description": "Unidade no inventário da rede (011/R4.1): as colunas da `vw_unit_inventory`, sem dado\npessoal (011/R4.2). Tipo, área técnica e distrito vêm com o id (o mesmo dos filtros) e o nome;\nas quantidades contam equipamentos e serviços da unidade em qualquer status."
+      },
+      "JsonValue": {},
       "Jwk": {
         "properties": {
           "kty": {
@@ -973,6 +1674,37 @@
         "title": "MudancaOut",
         "description": "Um campo alterado, com o valor de antes (`de`) e o de depois (`para`)."
       },
+      "PaginaOut_AlteracaoBancoOut_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/AlteracaoBancoOut"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho"
+        ],
+        "title": "PaginaOut[AlteracaoBancoOut]"
+      },
       "PaginaOut_ConciliacaoOut_": {
         "properties": {
           "itens": {
@@ -1035,6 +1767,68 @@
         ],
         "title": "PaginaOut[EventoHistoricoOut]"
       },
+      "PaginaOut_InventarioOut_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/InventarioOut"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho"
+        ],
+        "title": "PaginaOut[InventarioOut]"
+      },
+      "PaginaOut_UnidadeForaCnesOut_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/UnidadeForaCnesOut"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho"
+        ],
+        "title": "PaginaOut[UnidadeForaCnesOut]"
+      },
       "PaginaOut_UnidadeResumoOut_": {
         "properties": {
           "itens": {
@@ -1066,6 +1860,62 @@
         ],
         "title": "PaginaOut[UnidadeResumoOut]"
       },
+      "ParticaoOut": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "de": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "De"
+          },
+          "ate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ate"
+          },
+          "registros": {
+            "type": "integer",
+            "title": "Registros"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nome",
+          "de",
+          "ate",
+          "registros"
+        ],
+        "title": "ParticaoOut",
+        "description": "Uma partição do log do banco (011/R6.9): nome, intervalo (`de` incluído, `ate` excluído)\ne quantidade de registros. A DEFAULT, que recebe o que não cai em mês nenhum, vem com `de` e\n`ate` nulos."
+      },
+      "SituacaoCadastral": {
+        "type": "string",
+        "enum": [
+          "inativa",
+          "com_pendencias",
+          "sem_cnes",
+          "regular"
+        ],
+        "title": "SituacaoCadastral",
+        "description": "Situação cadastral da unidade, por `fn_registration_status` (011/R5.3)."
+      },
       "SituacaoConciliacao": {
         "type": "string",
         "enum": [
@@ -1075,6 +1925,14 @@
         ],
         "title": "SituacaoConciliacao",
         "description": "Lado da conciliação unidade x equipamento em que a linha caiu (011/R2.2)."
+      },
+      "TabelaDoCadastro": {
+        "type": "string",
+        "enum": [
+          "health_units",
+          "equipments",
+          "services"
+        ]
       },
       "UnidadeCreate": {
         "properties": {
@@ -1235,6 +2093,53 @@
         ],
         "title": "UnidadeDesativacao",
         "description": "Pedido de desativação: o motivo vai para a auditoria (006/R4.1)."
+      },
+      "UnidadeForaCnesOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "cnes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnes"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "distrito": {
+            "type": "string",
+            "title": "Distrito"
+          },
+          "servicos_fora_cnes": {
+            "type": "integer",
+            "title": "Servicos Fora Cnes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "cnes",
+          "tipo",
+          "distrito",
+          "servicos_fora_cnes"
+        ],
+        "title": "UnidadeForaCnesOut",
+        "description": "Unidade com serviço fora do CNES e a quantidade desses serviços (011/R2.4)."
       },
       "UnidadeOut": {
         "properties": {

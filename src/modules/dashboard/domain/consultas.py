@@ -48,6 +48,14 @@ class UnidadeResumo:
     distrito: str
 
 
+@dataclass(frozen=True, slots=True)
+class UnidadeForaCnes:
+    """Uma unidade com serviço fora do CNES (011/R2.4) e a quantidade desses serviços."""
+
+    unidade: UnidadeResumo
+    servicos_fora_cnes: int
+
+
 class SituacaoConciliacao(StrEnum):
     """Lado da conciliação unidade x equipamento em que a linha caiu (011/R2.2)."""
 
@@ -68,3 +76,53 @@ class ItemConciliacao:
     equipamento_nome: str | None
     equipamento_tipo: str | None
     situacao: SituacaoConciliacao
+
+
+@dataclass(frozen=True, slots=True)
+class DistritoCnes:
+    """Um distrito acima da rede em unidades sem CNES (011/R2.3); `percentual` de 0 a 100."""
+
+    id: int
+    nome: str
+    total_unidades: int
+    sem_cnes: int
+    percentual: float
+
+
+@dataclass(frozen=True, slots=True)
+class DistritosCnes:
+    """O percentual de unidades sem CNES da rede (as unidades no escopo e no filtro; nulo se não há
+    nenhuma) e os distritos acima dele, do maior para o menor percentual."""
+
+    percentual_rede: float | None
+    distritos: tuple[DistritoCnes, ...]
+
+
+class SituacaoCadastral(StrEnum):
+    """Situação cadastral da unidade, por `fn_registration_status` (011/R5.3)."""
+
+    INATIVA = "inativa"
+    COM_PENDENCIAS = "com_pendencias"
+    SEM_CNES = "sem_cnes"
+    REGULAR = "regular"
+
+
+@dataclass(frozen=True, slots=True)
+class ItemInventario:
+    """Uma unidade no inventário da rede (011/R4.1): referências por id e nome e as quantidades de
+    equipamentos, serviços e serviços fora do CNES. Sem dado pessoal (011/R4.2)."""
+
+    id: UUID
+    nome: str
+    cnes: str | None
+    status: str
+    situacao_cadastral: SituacaoCadastral
+    tipo_id: int
+    tipo: str
+    area_tecnica_id: int
+    area_tecnica: str
+    distrito_id: int
+    distrito: str
+    equipamentos: int
+    servicos: int
+    servicos_fora_cnes: int
