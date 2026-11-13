@@ -60,7 +60,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
   - Requisitos: R6.5, R6.6, R6.7, R6.8, R10.1
   - Pronto quando: `tests/integration/audit/test_particoes.py` (cria os meses faltantes; não apaga nada; DEFAULT com linha de um mês → aviso e mês pulado; a migração deixa 12 meses à frente; login da API não executa o procedimento) e `tests/integration/tools/test_sgs_admin_particoes.py` passam
 
-- [ ] T9. Prova de uso dos índices com volume
+- [x] T9. Prova de uso dos índices com volume
   - Fixture de volume (1.000 unidades, ~3.000 serviços, trilha pelo `audit.registrar`) e `EXPLAIN` registrado no cabeçalho dos `.sql` dos índices.
   - Bloqueada por: T3
   - Requisitos: R1.3, R1.4
@@ -98,7 +98,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
   - Requisitos: R4.5
   - Pronto quando: `tests/integration/audit/test_historico_unidade.py` passa (eventos da unidade, de seus equipamentos e serviços, com autor; 403 fora do escopo)
 
-- [ ] T15. Log do banco e partições na API
+- [x] T15. Log do banco e partições na API
   - `db_change_log_list.sql`, `db_change_log_partitions.sql`, rotas `GET /auditoria/banco` e `/auditoria/banco/particoes`.
   - Bloqueada por: T8, 003/T4
   - Requisitos: R6.9, R7.7, R7.8
