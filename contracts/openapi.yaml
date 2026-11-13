@@ -376,6 +376,49 @@
         }
       }
     },
+    "/api/v1/dashboard/consultas": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Catálogo das consultas que o usuário pode executar",
+        "description": "011/R3.1, R3.2: as consultas e views da 011 que o usuário tem permissão de executar.",
+        "operationId": "catalogo_de_consultas_api_v1_dashboard_consultas_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConsultaDescritaOut"
+                  },
+                  "type": "array",
+                  "title": "Response Catalogo De Consultas Api V1 Dashboard Consultas Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `dashboard:read`",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/dashboard/consultas/unidades-sem-servico": {
       "get": {
         "tags": [
@@ -1147,6 +1190,25 @@
         "title": "AlteracaoBancoOut",
         "description": "Um registro do log do banco (011/R7.1, R7.7). `via_api` falso é alteração feita fora da\nAPI, por outro usuário de banco ou por superusuário (011/R7.2)."
       },
+      "ColunaOut": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "descricao": {
+            "type": "string",
+            "title": "Descricao"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nome",
+          "descricao"
+        ],
+        "title": "ColunaOut",
+        "description": "Campo de cada item da resposta da rota descrita no catálogo."
+      },
       "ConciliacaoOut": {
         "properties": {
           "unidade_id": {
@@ -1233,6 +1295,61 @@
         ],
         "title": "ConciliacaoOut",
         "description": "Linha da conciliação unidade x equipamento; o lado que faltar vem nulo. `distrito` é o\nnome do distrito da unidade e `equipamento_tipo`, o nome do tipo do equipamento."
+      },
+      "ConsultaDescritaOut": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "justificativa": {
+            "type": "string",
+            "title": "Justificativa"
+          },
+          "rota": {
+            "type": "string",
+            "title": "Rota"
+          },
+          "parametros": {
+            "items": {
+              "$ref": "#/components/schemas/ParametroOut"
+            },
+            "type": "array",
+            "title": "Parametros"
+          },
+          "colunas": {
+            "items": {
+              "$ref": "#/components/schemas/ColunaOut"
+            },
+            "type": "array",
+            "title": "Colunas"
+          },
+          "permissao": {
+            "type": "string",
+            "title": "Permissao"
+          },
+          "grafico_sugerido": {
+            "type": "string",
+            "title": "Grafico Sugerido"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slug",
+          "titulo",
+          "justificativa",
+          "rota",
+          "parametros",
+          "colunas",
+          "permissao",
+          "grafico_sugerido"
+        ],
+        "title": "ConsultaDescritaOut",
+        "description": "Uma consulta do catálogo (011/R3.1): título, justificativa semântica, rota, parâmetros,\ncolunas da resposta, permissão exigida e tipo de gráfico sugerido."
       },
       "DeParaOut": {
         "properties": {
@@ -1750,6 +1867,30 @@
           "tamanho"
         ],
         "title": "PaginaOut[UnidadeResumoOut]"
+      },
+      "ParametroOut": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "descricao": {
+            "type": "string",
+            "title": "Descricao"
+          },
+          "obrigatorio": {
+            "type": "boolean",
+            "title": "Obrigatorio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nome",
+          "descricao",
+          "obrigatorio"
+        ],
+        "title": "ParametroOut",
+        "description": "Parâmetro aceito pela rota descrita no catálogo."
       },
       "ParticaoOut": {
         "properties": {

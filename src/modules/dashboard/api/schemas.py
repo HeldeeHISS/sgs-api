@@ -14,6 +14,41 @@ from src.modules.dashboard.application.consultas import (
 )
 
 
+class ParametroOut(BaseModel):
+    """Parâmetro aceito pela rota descrita no catálogo."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    nome: str
+    descricao: str
+    obrigatorio: bool
+
+
+class ColunaOut(BaseModel):
+    """Campo de cada item da resposta da rota descrita no catálogo."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    nome: str
+    descricao: str
+
+
+class ConsultaDescritaOut(BaseModel):
+    """Uma consulta do catálogo (011/R3.1): título, justificativa semântica, rota, parâmetros,
+    colunas da resposta, permissão exigida e tipo de gráfico sugerido."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    slug: str
+    titulo: str
+    justificativa: str
+    rota: str
+    parametros: list[ParametroOut]
+    colunas: list[ColunaOut]
+    permissao: str
+    grafico_sugerido: str
+
+
 class UnidadeResumoOut(BaseModel):
     """Unidade numa consulta de qualidade; `tipo` e `distrito` são os nomes, para leitura."""
 
