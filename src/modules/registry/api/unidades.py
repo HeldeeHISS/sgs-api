@@ -1,13 +1,19 @@
 """Rotas da unidade de saúde (design da 006 § Rotas)."""
 
 import re
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, Request, Response
+from fastapi import APIRouter, Depends, Header, Query, Request, Response
 
 from src.core.errors import PreconditionFailed, PreconditionRequired
 from src.core.ids import uuid7
+from src.core.paginacao import (
+    TAMANHO_PADRAO,
+    NumeroDaPagina,
+    PaginaOut,
+    TamanhoDaPagina,
+)
 from src.core.problem import PROBLEM_JSON
 from src.modules.access.api.deps import (
     ResourceRef,
@@ -17,15 +23,21 @@ from src.modules.access.api.deps import (
     require,
 )
 from src.modules.registry.api.schemas import (
+    StatusDaUnidade,
     UnidadeCreate,
     UnidadeDesativacao,
+    UnidadeDetalheOut,
     UnidadeOut,
     UnidadeUpdate,
 )
 from src.modules.registry.application.unidades import (
+    FiltrosDeUnidades,
+    PaginaPedida,
     atualizar_unidade,
+    buscar_unidades,
     criar_unidade,
     desativar_unidade,
+    detalhar_unidade,
 )
 
 router = APIRouter(prefix="/api/v1", tags=["unidades"])
@@ -37,6 +49,104 @@ _ETAG = re.compile(r'"([1-9][0-9]{0,9})"')
 def _problema(descricao: str) -> dict[str, Any]:
     """Resposta de erro em problem+json (spec 001), para o contrato."""
     return {"description": descricao, "content": {PROBLEM_JSON: {}}}
+
+
+# Ids das referências são `smallint` no banco.
+_IdDeReferencia = Annotated[int | None, Query(ge=1, le=32767)]
+
+OrdemPedida = Literal["nome", "distrito", "atualizacao"]
+
+
+@router.get(
+    "/unidades",
+    summary="Listar e buscar unidades de saúde",
+    responses={
+        401: _problema("Sem access token válido"),
+        403: _problema("Sem `unidade:read`"),
+        422: _problema("Parâmetro de busca, filtro, ordenação ou paginação inválido"),
+    },
+)
+async def listar(
+    request: Request,
+    usuario: Annotated[UsuarioAtual, Depends(require("unidade:read"))],
+    q: Annotated[
+        str | None,
+        Query(
+            max_length=200,
+            description="Trecho do nome (sem diferença de acento, caixa e espaços) ou do CNES.",
+        ),
+    ] = None,
+    tipo: Annotated[_IdDeReferencia, Query(description="Id do tipo de unidade.")] = None,
+    area: Annotated[_IdDeReferencia, Query(description="Id da área técnica.")] = None,
+    distrito: Annotated[_IdDeReferencia, Query(description="Id do distrito sanitário.")] = None,
+    status: StatusDaUnidade | None = None,
+    com_pendencias: Annotated[
+        bool | None,
+        Query(description="`true`: só as com pendências de validação; `false`: só as sem."),
+    ] = None,
+    ordenar: Annotated[
+        OrdemPedida | None,
+        Query(
+            description=(
+                "`nome` (padrão), `distrito` ou `atualizacao` (mais recente primeiro). Sem ele e "
+                "com `q`, a mais parecida com o texto vem primeiro."
+            )
+        ),
+    ] = None,
+    pagina: NumeroDaPagina = 1,
+    tamanho: TamanhoDaPagina = TAMANHO_PADRAO,
+) -> PaginaOut[UnidadeOut]:
+    """006/R2.1 a R2.4, R2.6: uma página das unidades no escopo de leitura do usuário, com o total
+    da listagem. Os filtros se combinam."""
+    texto = None if q is None else (q.strip() or None)
+    filtros = FiltrosDeUnidades(
+        texto=texto,
+        tipo=tipo,
+        area=area,
+        distrito=distrito,
+        status=status,
+        com_pendencias=com_pendencias,
+    )
+    async with request.app.state.sessoes() as sessao:
+        resultado = await buscar_unidades(
+            filtros,
+            ordenar,
+            PaginaPedida(numero=pagina, tamanho=tamanho),
+            usuario=usuario,
+            unidades=request.app.state.repositorio_de_unidades(sessao),
+        )
+    return PaginaOut(
+        itens=[UnidadeOut.de(unidade) for unidade in resultado.itens],
+        total=resultado.total,
+        pagina=pagina,
+        tamanho=tamanho,
+    )
+
+
+@router.get(
+    "/unidades/{id}",
+    summary="Detalhar unidade de saúde",
+    responses={
+        401: _problema("Sem access token válido"),
+        403: _problema("Sem `unidade:read` no escopo da unidade"),
+        404: _problema("A unidade não existe"),
+        422: _problema("Id inválido"),
+    },
+)
+async def detalhar(
+    request: Request,
+    response: Response,
+    id: UUID,
+    usuario: Annotated[UsuarioAtual, Depends(require("unidade:read", ResourceRef("unidade")))],
+) -> UnidadeDetalheOut:
+    """006/R2.5, R2.6: a unidade com os equipamentos e serviços vinculados e o `ETag` da versão,
+    o mesmo que o `PATCH` espera em `If-Match`."""
+    async with request.app.state.sessoes() as sessao:
+        detalhe = await detalhar_unidade(
+            id, unidades=request.app.state.repositorio_de_unidades(sessao)
+        )
+    response.headers["ETag"] = f'"{detalhe.unidade.version}"'
+    return UnidadeDetalheOut.do_detalhe(detalhe)
 
 
 @router.post(

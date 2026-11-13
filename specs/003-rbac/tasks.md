@@ -22,11 +22,11 @@
   - Bloqueada por: T3, 002/T4
   - Requisitos: R4.1, R4.3, R4.4, R4.6
   - Pronto quando: `tests/integration/access/test_require.py` passa
-- [ ] T5. Teste de arquitetura de rotas protegidas
+- [x] T5. Teste de arquitetura de rotas protegidas
   - Bloqueada por: T4
   - Requisitos: R4.1
   - Pronto quando: `tests/architecture/test_rotas_protegidas.py` passa
-- [ ] T6. `GET /me`
+- [x] T6. `GET /me`
   - Bloqueada por: T3, T4 (`CurrentUser`)
   - Requisitos: R5.1
   - Pronto quando: `tests/integration/access/test_me.py` passa

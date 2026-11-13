@@ -74,7 +74,254 @@
         }
       }
     },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "perfil"
+        ],
+        "summary": "Perfil do usuário logado",
+        "description": "003/R5.1. Os papéis e as permissões são os vigentes agora, como o `require()` os vê.",
+        "operationId": "me_api_v1_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/unidades": {
+      "get": {
+        "tags": [
+          "unidades"
+        ],
+        "summary": "Listar e buscar unidades de saúde",
+        "description": "006/R2.1 a R2.4, R2.6: uma página das unidades no escopo de leitura do usuário, com o total\nda listagem. Os filtros se combinam.",
+        "operationId": "listar_api_v1_unidades_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Trecho do nome (sem diferença de acento, caixa e espaços) ou do CNES.",
+              "title": "Q"
+            },
+            "description": "Trecho do nome (sem diferença de acento, caixa e espaços) ou do CNES."
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id do tipo de unidade.",
+              "title": "Tipo"
+            },
+            "description": "Id do tipo de unidade."
+          },
+          {
+            "name": "area",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id da área técnica.",
+              "title": "Area"
+            },
+            "description": "Id da área técnica."
+          },
+          {
+            "name": "distrito",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id do distrito sanitário.",
+              "title": "Distrito"
+            },
+            "description": "Id do distrito sanitário."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "ativa",
+                    "inativa",
+                    "em_implantacao"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "com_pendencias",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`true`: só as com pendências de validação; `false`: só as sem.",
+              "title": "Com Pendencias"
+            },
+            "description": "`true`: só as com pendências de validação; `false`: só as sem."
+          },
+          {
+            "name": "ordenar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "nome",
+                    "distrito",
+                    "atualizacao"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`nome` (padrão), `distrito` ou `atualizacao` (mais recente primeiro). Sem ele e com `q`, a mais parecida com o texto vem primeiro.",
+              "title": "Ordenar"
+            },
+            "description": "`nome` (padrão), `distrito` ou `atualizacao` (mais recente primeiro). Sem ele e com `q`, a mais parecida com o texto vem primeiro."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 1,
+              "description": "Página, a partir de 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Página, a partir de 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Itens por página (padrão 20, máximo 100).",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Itens por página (padrão 20, máximo 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaOut_UnidadeOut_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `unidade:read`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Parâmetro de busca, filtro, ordenação ou paginação inválido",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "unidades"
@@ -82,15 +329,20 @@
         "summary": "Cadastrar unidade de saúde",
         "description": "006/R1. Responde com a unidade criada, o `Location` dela e o `ETag` da versão.",
         "operationId": "criar_api_v1_unidades_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UnidadeCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -127,15 +379,71 @@
               "application/problem+json": {}
             }
           }
-        },
+        }
+      }
+    },
+    "/api/v1/unidades/{id}": {
+      "get": {
+        "tags": [
+          "unidades"
+        ],
+        "summary": "Detalhar unidade de saúde",
+        "description": "006/R2.5, R2.6: a unidade com os equipamentos e serviços vinculados e o `ETag` da versão,\no mesmo que o `PATCH` espera em `If-Match`.",
+        "operationId": "detalhar_api_v1_unidades__id__get",
         "security": [
           {
             "HTTPBearer": []
           }
-        ]
-      }
-    },
-    "/api/v1/unidades/{id}": {
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnidadeDetalheOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `unidade:read` no escopo da unidade",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "A unidade não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Id inválido",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      },
       "patch": {
         "tags": [
           "unidades"
@@ -2483,6 +2791,86 @@
         "title": "DistritosCnesOut",
         "description": "Percentual de unidades sem CNES da rede (as unidades no escopo e no filtro; nulo se não há\nnenhuma) e os distritos acima dele, do maior para o menor percentual."
       },
+      "EquipamentoOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "cnes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnes"
+          },
+          "tipo_equipamento": {
+            "type": "string",
+            "title": "Tipo Equipamento",
+            "description": "Código do tipo de equipamento."
+          },
+          "quantidade": {
+            "type": "integer",
+            "title": "Quantidade"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "cnes",
+          "tipo_equipamento",
+          "quantidade",
+          "status"
+        ],
+        "title": "EquipamentoOut",
+        "description": "Equipamento vinculado à unidade, no detalhe dela (006/R2.5)."
+      },
+      "EscopoOut": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "global",
+              "area",
+              "distrito",
+              "unidade"
+            ],
+            "title": "Tipo"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id",
+            "description": "Id da área técnica, do distrito ou da unidade, em texto; nulo se global."
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "id"
+        ],
+        "title": "EscopoOut"
+      },
       "EventoHistoricoOut": {
         "properties": {
           "id": {
@@ -2893,6 +3281,37 @@
         ],
         "title": "PaginaOut[UnidadeForaCnesOut]"
       },
+      "PaginaOut_UnidadeOut_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/UnidadeOut"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho"
+        ],
+        "title": "PaginaOut[UnidadeOut]"
+      },
       "PaginaOut_UnidadeResumoOut_": {
         "properties": {
           "itens": {
@@ -2923,6 +3342,51 @@
           "tamanho"
         ],
         "title": "PaginaOut[UnidadeResumoOut]"
+      },
+      "PapelOut": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "escopo": {
+            "$ref": "#/components/schemas/EscopoOut"
+          },
+          "origem": {
+            "type": "string",
+            "enum": [
+              "direta",
+              "grupo"
+            ],
+            "title": "Origem",
+            "description": "Atribuição direta ou derivada de grupo do diretório."
+          },
+          "valido_ate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valido Ate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "nome",
+          "escopo",
+          "origem",
+          "valido_ate"
+        ],
+        "title": "PapelOut"
       },
       "ParametroOut": {
         "properties": {
@@ -2992,6 +3456,63 @@
         ],
         "title": "ParticaoOut",
         "description": "Uma partição do log do banco (011/R6.9): nome, intervalo (`de` incluído, `ate` excluído)\ne quantidade de registros. A DEFAULT, que recebe o que não cai em mês nenhum, vem com `de` e\n`ate` nulos."
+      },
+      "PerfilOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "papeis": {
+            "items": {
+              "$ref": "#/components/schemas/PapelOut"
+            },
+            "type": "array",
+            "title": "Papeis"
+          },
+          "permissoes": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/EscopoOut"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Permissoes",
+            "description": "Código da permissão (`recurso:acao`) → escopos em que o usuário a tem."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "nome",
+          "email",
+          "papeis",
+          "permissoes"
+        ],
+        "title": "PerfilOut",
+        "description": "003/R5.1: dados básicos, papéis com escopos e permissões efetivas."
       },
       "ReferenciaCreate": {
         "properties": {
@@ -3089,6 +3610,54 @@
         "type": "object",
         "title": "ReferenciaUpdate",
         "description": "Só os campos enviados mudam; `ativo: false` desativa, `true` reativa. Nulo explícito é\nrecusado: os campos não são opcionais no banco."
+      },
+      "ServicoOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "tipo_servico_id": {
+            "type": "integer",
+            "title": "Tipo Servico Id"
+          },
+          "equipamento_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equipamento Id"
+          },
+          "no_cnes": {
+            "type": "boolean",
+            "title": "No Cnes"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "tipo_servico_id",
+          "equipamento_id",
+          "no_cnes",
+          "status"
+        ],
+        "title": "ServicoOut",
+        "description": "Serviço vinculado à unidade, no detalhe dela (006/R2.5). `no_cnes` diz se ele consta no\nCNES (006/R6.3)."
       },
       "SituacaoCadastral": {
         "type": "string",
@@ -3399,6 +3968,184 @@
         ],
         "title": "UnidadeDesativacao",
         "description": "Pedido de desativação: o motivo vai para a auditoria (006/R4.1)."
+      },
+      "UnidadeDetalheOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "cnes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnes"
+          },
+          "cnes_pendente": {
+            "type": "boolean",
+            "title": "Cnes Pendente"
+          },
+          "tipo_unidade_id": {
+            "type": "integer",
+            "title": "Tipo Unidade Id"
+          },
+          "distrito_id": {
+            "type": "integer",
+            "title": "Distrito Id"
+          },
+          "cep": {
+            "type": "string",
+            "title": "Cep"
+          },
+          "endereco": {
+            "type": "string",
+            "title": "Endereco"
+          },
+          "bairro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bairro"
+          },
+          "telefone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefone"
+          },
+          "nome_gestor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome Gestor"
+          },
+          "horario_funcionamento": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horario Funcionamento"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ativa",
+              "inativa",
+              "em_implantacao"
+            ],
+            "title": "Status"
+          },
+          "pendencias": {
+            "type": "integer",
+            "title": "Pendencias"
+          },
+          "versao": {
+            "type": "integer",
+            "title": "Versao"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Atualizado Em"
+          },
+          "equipamentos": {
+            "items": {
+              "$ref": "#/components/schemas/EquipamentoOut"
+            },
+            "type": "array",
+            "title": "Equipamentos"
+          },
+          "servicos": {
+            "items": {
+              "$ref": "#/components/schemas/ServicoOut"
+            },
+            "type": "array",
+            "title": "Servicos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "cnes",
+          "cnes_pendente",
+          "tipo_unidade_id",
+          "distrito_id",
+          "cep",
+          "endereco",
+          "bairro",
+          "telefone",
+          "nome_gestor",
+          "horario_funcionamento",
+          "latitude",
+          "longitude",
+          "status",
+          "pendencias",
+          "versao",
+          "criado_em",
+          "atualizado_em",
+          "equipamentos",
+          "servicos"
+        ],
+        "title": "UnidadeDetalheOut",
+        "description": "A unidade completa com os equipamentos e serviços vinculados a ela (006/R2.5)."
       },
       "UnidadeForaCnesOut": {
         "properties": {

@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from src.modules.access.domain.authorization import Alvo, Concessao
+from src.modules.access.domain.authorization import Alvo, Concessao, PapelAtribuido
 
 
 class RepositorioDePermissoes(Protocol):
@@ -24,6 +24,13 @@ class RepositorioDePermissoes(Protocol):
     async def invalidar(self, usuario_id: UUID) -> None:
         """Incrementa `users.authz_version`. Quem altera as atribuições de um usuário chama na
         mesma transação, e a mudança vale na próxima requisição (003/R4.5)."""
+        ...
+
+
+class RepositorioDePapeis(Protocol):
+    async def papeis(self, usuario_id: UUID, agora: datetime) -> Sequence[PapelAtribuido]:
+        """As atribuições do usuário (diretas ou de grupo) que não tenham expirado até `agora`,
+        na ordem do código do papel."""
         ...
 
 
