@@ -12,7 +12,13 @@ from uuid import UUID
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
-from src.modules.registry.application.unidades import DadosDaUnidade, Unidade
+from src.modules.registry.application.unidades import (
+    DadosDaUnidade,
+    DetalheDaUnidade,
+    EquipamentoDaUnidade,
+    ServicoDaUnidade,
+    Unidade,
+)
 
 StatusDaUnidade = Literal["ativa", "inativa", "em_implantacao"]
 
@@ -173,4 +179,64 @@ class UnidadeOut(BaseModel):
             versao=unidade.version,
             criado_em=unidade.created_at,
             atualizado_em=unidade.updated_at,
+        )
+
+
+class EquipamentoOut(BaseModel):
+    """Equipamento vinculado à unidade, no detalhe dela (006/R2.5)."""
+
+    id: UUID
+    nome: str
+    cnes: str | None
+    tipo_equipamento: str = Field(description="Código do tipo de equipamento.")
+    quantidade: int
+    status: str
+
+    @classmethod
+    def de(cls, equipamento: EquipamentoDaUnidade) -> Self:
+        return cls(
+            id=equipamento.id,
+            nome=equipamento.name,
+            cnes=equipamento.cnes,
+            tipo_equipamento=equipamento.equipment_type_code,
+            quantidade=equipamento.quantity,
+            status=equipamento.status,
+        )
+
+
+class ServicoOut(BaseModel):
+    """Serviço vinculado à unidade, no detalhe dela (006/R2.5). `no_cnes` diz se ele consta no
+    CNES (006/R6.3)."""
+
+    id: UUID
+    nome: str
+    tipo_servico_id: int
+    equipamento_id: UUID | None
+    no_cnes: bool
+    status: str
+
+    @classmethod
+    def de(cls, servico: ServicoDaUnidade) -> Self:
+        return cls(
+            id=servico.id,
+            nome=servico.name,
+            tipo_servico_id=servico.service_type_id,
+            equipamento_id=servico.equipment_id,
+            no_cnes=servico.in_cnes,
+            status=servico.status,
+        )
+
+
+class UnidadeDetalheOut(UnidadeOut):
+    """A unidade completa com os equipamentos e serviços vinculados a ela (006/R2.5)."""
+
+    equipamentos: list[EquipamentoOut]
+    servicos: list[ServicoOut]
+
+    @classmethod
+    def do_detalhe(cls, detalhe: DetalheDaUnidade) -> Self:
+        return cls(
+            **UnidadeOut.de(detalhe.unidade).model_dump(),
+            equipamentos=[EquipamentoOut.de(e) for e in detalhe.equipamentos],
+            servicos=[ServicoOut.de(s) for s in detalhe.servicos],
         )

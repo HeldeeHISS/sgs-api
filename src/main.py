@@ -24,6 +24,7 @@ from src.modules.audit.api import historico, log_banco
 from src.modules.audit.infrastructure.historico import SqlHistoricoDeUnidades
 from src.modules.audit.infrastructure.log_banco import SqlLogDoBanco
 from src.modules.audit.infrastructure.repository import SqlAuditStore
+from src.modules.dashboard.api import catalogo
 from src.modules.dashboard.api import rotas as dashboard
 from src.modules.dashboard.infrastructure.consultas import SqlConsultasDashboard
 from src.modules.identity.api import jwks
@@ -91,6 +92,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(equipamentos.router)
     app.include_router(referencias.router)
     app.include_router(historico.router)
+    app.include_router(catalogo.router)
     app.include_router(dashboard.router)
     app.include_router(log_banco.router)
 

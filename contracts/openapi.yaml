@@ -75,6 +75,220 @@
       }
     },
     "/api/v1/unidades": {
+      "get": {
+        "tags": [
+          "unidades"
+        ],
+        "summary": "Listar e buscar unidades de saúde",
+        "description": "006/R2.1 a R2.4, R2.6: uma página das unidades no escopo de leitura do usuário, com o total\nda listagem. Os filtros se combinam.",
+        "operationId": "listar_api_v1_unidades_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Trecho do nome (sem diferença de acento, caixa e espaços) ou do CNES.",
+              "title": "Q"
+            },
+            "description": "Trecho do nome (sem diferença de acento, caixa e espaços) ou do CNES."
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id do tipo de unidade.",
+              "title": "Tipo"
+            },
+            "description": "Id do tipo de unidade."
+          },
+          {
+            "name": "area",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id da área técnica.",
+              "title": "Area"
+            },
+            "description": "Id da área técnica."
+          },
+          {
+            "name": "distrito",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id do distrito sanitário.",
+              "title": "Distrito"
+            },
+            "description": "Id do distrito sanitário."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "ativa",
+                    "inativa",
+                    "em_implantacao"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "com_pendencias",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`true`: só as com pendências de validação; `false`: só as sem.",
+              "title": "Com Pendencias"
+            },
+            "description": "`true`: só as com pendências de validação; `false`: só as sem."
+          },
+          {
+            "name": "ordenar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "nome",
+                    "distrito",
+                    "atualizacao"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`nome` (padrão), `distrito` ou `atualizacao` (mais recente primeiro). Sem ele e com `q`, a mais parecida com o texto vem primeiro.",
+              "title": "Ordenar"
+            },
+            "description": "`nome` (padrão), `distrito` ou `atualizacao` (mais recente primeiro). Sem ele e com `q`, a mais parecida com o texto vem primeiro."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 1,
+              "description": "Página, a partir de 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Página, a partir de 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Itens por página (padrão 20, máximo 100).",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Itens por página (padrão 20, máximo 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaOut_UnidadeOut_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `unidade:read`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Parâmetro de busca, filtro, ordenação ou paginação inválido",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "unidades"
@@ -82,15 +296,20 @@
         "summary": "Cadastrar unidade de saúde",
         "description": "006/R1. Responde com a unidade criada, o `Location` dela e o `ETag` da versão.",
         "operationId": "criar_api_v1_unidades_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UnidadeCreate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "201": {
@@ -127,15 +346,71 @@
               "application/problem+json": {}
             }
           }
-        },
+        }
+      }
+    },
+    "/api/v1/unidades/{id}": {
+      "get": {
+        "tags": [
+          "unidades"
+        ],
+        "summary": "Detalhar unidade de saúde",
+        "description": "006/R2.5, R2.6: a unidade com os equipamentos e serviços vinculados e o `ETag` da versão,\no mesmo que o `PATCH` espera em `If-Match`.",
+        "operationId": "detalhar_api_v1_unidades__id__get",
         "security": [
           {
             "HTTPBearer": []
           }
-        ]
-      }
-    },
-    "/api/v1/unidades/{id}": {
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnidadeDetalheOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `unidade:read` no escopo da unidade",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "A unidade não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Id inválido",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      },
       "patch": {
         "tags": [
           "unidades"
@@ -350,7 +625,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/EquipamentoOut"
+                    "$ref": "#/components/schemas/src__modules__registry__api__equipamentos__EquipamentoOut"
                   },
                   "title": "Response Listar Api V1 Unidades  Id  Equipamentos Get"
                 }
@@ -427,7 +702,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EquipamentoOut"
+                  "$ref": "#/components/schemas/src__modules__registry__api__equipamentos__EquipamentoOut"
                 }
               }
             }
@@ -510,7 +785,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EquipamentoOut"
+                  "$ref": "#/components/schemas/src__modules__registry__api__equipamentos__EquipamentoOut"
                 }
               }
             }
@@ -625,7 +900,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/EquipamentoOut"
+                    "$ref": "#/components/schemas/src__modules__registry__api__equipamentos__EquipamentoOut"
                   },
                   "type": "array",
                   "title": "Response Listar Sem Unidade  Api V1 Equipamentos Get"
@@ -675,7 +950,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EquipamentoOut"
+                  "$ref": "#/components/schemas/src__modules__registry__api__equipamentos__EquipamentoOut"
                 }
               }
             }
@@ -1754,6 +2029,49 @@
         }
       }
     },
+    "/api/v1/dashboard/consultas": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Catálogo das consultas que o usuário pode executar",
+        "description": "011/R3.1, R3.2: as consultas e views da 011 que o usuário tem permissão de executar.",
+        "operationId": "catalogo_de_consultas_api_v1_dashboard_consultas_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConsultaDescritaOut"
+                  },
+                  "type": "array",
+                  "title": "Response Catalogo De Consultas Api V1 Dashboard Consultas Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `dashboard:read`",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/dashboard/consultas/unidades-sem-servico": {
       "get": {
         "tags": [
@@ -2525,6 +2843,25 @@
         "title": "AlteracaoBancoOut",
         "description": "Um registro do log do banco (011/R7.1, R7.7). `via_api` falso é alteração feita fora da\nAPI, por outro usuário de banco ou por superusuário (011/R7.2)."
       },
+      "ColunaOut": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "descricao": {
+            "type": "string",
+            "title": "Descricao"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nome",
+          "descricao"
+        ],
+        "title": "ColunaOut",
+        "description": "Campo de cada item da resposta da rota descrita no catálogo."
+      },
       "ConciliacaoOut": {
         "properties": {
           "unidade_id": {
@@ -2611,6 +2948,61 @@
         ],
         "title": "ConciliacaoOut",
         "description": "Linha da conciliação unidade x equipamento; o lado que faltar vem nulo. `distrito` é o\nnome do distrito da unidade e `equipamento_tipo`, o nome do tipo do equipamento."
+      },
+      "ConsultaDescritaOut": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "justificativa": {
+            "type": "string",
+            "title": "Justificativa"
+          },
+          "rota": {
+            "type": "string",
+            "title": "Rota"
+          },
+          "parametros": {
+            "items": {
+              "$ref": "#/components/schemas/ParametroOut"
+            },
+            "type": "array",
+            "title": "Parametros"
+          },
+          "colunas": {
+            "items": {
+              "$ref": "#/components/schemas/ColunaOut"
+            },
+            "type": "array",
+            "title": "Colunas"
+          },
+          "permissao": {
+            "type": "string",
+            "title": "Permissao"
+          },
+          "grafico_sugerido": {
+            "type": "string",
+            "title": "Grafico Sugerido"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slug",
+          "titulo",
+          "justificativa",
+          "rota",
+          "parametros",
+          "colunas",
+          "permissao",
+          "grafico_sugerido"
+        ],
+        "title": "ConsultaDescritaOut",
+        "description": "Uma consulta do catálogo (011/R3.1): título, justificativa semântica, rota, parâmetros,\ncolunas da resposta, permissão exigida e tipo de gráfico sugerido."
       },
       "DeParaOut": {
         "properties": {
@@ -2809,78 +3201,6 @@
         ],
         "title": "EquipamentoCreate",
         "description": "Equipamento novo: nome, tipo e status obrigatórios; sem quantidade, vale 1."
-      },
-      "EquipamentoOut": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
-          "unidade_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Unidade Id"
-          },
-          "nome": {
-            "type": "string",
-            "title": "Nome"
-          },
-          "cnes": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cnes"
-          },
-          "tipo_equipamento_codigo": {
-            "type": "string",
-            "title": "Tipo Equipamento Codigo"
-          },
-          "quantidade": {
-            "type": "integer",
-            "title": "Quantidade"
-          },
-          "status": {
-            "type": "string",
-            "title": "Status"
-          },
-          "criado_em": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Criado Em"
-          },
-          "atualizado_em": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Atualizado Em"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "unidade_id",
-          "nome",
-          "cnes",
-          "tipo_equipamento_codigo",
-          "quantidade",
-          "status",
-          "criado_em",
-          "atualizado_em"
-        ],
-        "title": "EquipamentoOut",
-        "description": "O equipamento; `unidade_id` nulo é o equipamento sem unidade (006/R5.2)."
       },
       "EquipamentoUpdate": {
         "properties": {
@@ -3382,6 +3702,37 @@
         ],
         "title": "PaginaOut[UnidadeForaCnesOut]"
       },
+      "PaginaOut_UnidadeOut_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/UnidadeOut"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho"
+        ],
+        "title": "PaginaOut[UnidadeOut]"
+      },
       "PaginaOut_UnidadeResumoOut_": {
         "properties": {
           "itens": {
@@ -3412,6 +3763,30 @@
           "tamanho"
         ],
         "title": "PaginaOut[UnidadeResumoOut]"
+      },
+      "ParametroOut": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "descricao": {
+            "type": "string",
+            "title": "Descricao"
+          },
+          "obrigatorio": {
+            "type": "boolean",
+            "title": "Obrigatorio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nome",
+          "descricao",
+          "obrigatorio"
+        ],
+        "title": "ParametroOut",
+        "description": "Parâmetro aceito pela rota descrita no catálogo."
       },
       "ParticaoOut": {
         "properties": {
@@ -3554,6 +3929,54 @@
         "type": "object",
         "title": "ReferenciaUpdate",
         "description": "Só os campos enviados mudam; `ativo: false` desativa, `true` reativa. Nulo explícito é\nrecusado: os campos não são opcionais no banco."
+      },
+      "ServicoOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "tipo_servico_id": {
+            "type": "integer",
+            "title": "Tipo Servico Id"
+          },
+          "equipamento_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equipamento Id"
+          },
+          "no_cnes": {
+            "type": "boolean",
+            "title": "No Cnes"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "tipo_servico_id",
+          "equipamento_id",
+          "no_cnes",
+          "status"
+        ],
+        "title": "ServicoOut",
+        "description": "Serviço vinculado à unidade, no detalhe dela (006/R2.5). `no_cnes` diz se ele consta no\nCNES (006/R6.3)."
       },
       "SituacaoCadastral": {
         "type": "string",
@@ -3864,6 +4287,184 @@
         ],
         "title": "UnidadeDesativacao",
         "description": "Pedido de desativação: o motivo vai para a auditoria (006/R4.1)."
+      },
+      "UnidadeDetalheOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "cnes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnes"
+          },
+          "cnes_pendente": {
+            "type": "boolean",
+            "title": "Cnes Pendente"
+          },
+          "tipo_unidade_id": {
+            "type": "integer",
+            "title": "Tipo Unidade Id"
+          },
+          "distrito_id": {
+            "type": "integer",
+            "title": "Distrito Id"
+          },
+          "cep": {
+            "type": "string",
+            "title": "Cep"
+          },
+          "endereco": {
+            "type": "string",
+            "title": "Endereco"
+          },
+          "bairro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bairro"
+          },
+          "telefone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefone"
+          },
+          "nome_gestor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome Gestor"
+          },
+          "horario_funcionamento": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horario Funcionamento"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ativa",
+              "inativa",
+              "em_implantacao"
+            ],
+            "title": "Status"
+          },
+          "pendencias": {
+            "type": "integer",
+            "title": "Pendencias"
+          },
+          "versao": {
+            "type": "integer",
+            "title": "Versao"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Atualizado Em"
+          },
+          "equipamentos": {
+            "items": {
+              "$ref": "#/components/schemas/src__modules__registry__api__schemas__EquipamentoOut"
+            },
+            "type": "array",
+            "title": "Equipamentos"
+          },
+          "servicos": {
+            "items": {
+              "$ref": "#/components/schemas/ServicoOut"
+            },
+            "type": "array",
+            "title": "Servicos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "cnes",
+          "cnes_pendente",
+          "tipo_unidade_id",
+          "distrito_id",
+          "cep",
+          "endereco",
+          "bairro",
+          "telefone",
+          "nome_gestor",
+          "horario_funcionamento",
+          "latitude",
+          "longitude",
+          "status",
+          "pendencias",
+          "versao",
+          "criado_em",
+          "atualizado_em",
+          "equipamentos",
+          "servicos"
+        ],
+        "title": "UnidadeDetalheOut",
+        "description": "A unidade completa com os equipamentos e serviços vinculados a ela (006/R2.5)."
       },
       "UnidadeForaCnesOut": {
         "properties": {
@@ -4331,6 +4932,126 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "src__modules__registry__api__equipamentos__EquipamentoOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "unidade_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unidade Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "cnes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnes"
+          },
+          "tipo_equipamento_codigo": {
+            "type": "string",
+            "title": "Tipo Equipamento Codigo"
+          },
+          "quantidade": {
+            "type": "integer",
+            "title": "Quantidade"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Atualizado Em"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "unidade_id",
+          "nome",
+          "cnes",
+          "tipo_equipamento_codigo",
+          "quantidade",
+          "status",
+          "criado_em",
+          "atualizado_em"
+        ],
+        "title": "EquipamentoOut",
+        "description": "O equipamento; `unidade_id` nulo é o equipamento sem unidade (006/R5.2)."
+      },
+      "src__modules__registry__api__schemas__EquipamentoOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "cnes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnes"
+          },
+          "tipo_equipamento": {
+            "type": "string",
+            "title": "Tipo Equipamento",
+            "description": "Código do tipo de equipamento."
+          },
+          "quantidade": {
+            "type": "integer",
+            "title": "Quantidade"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "cnes",
+          "tipo_equipamento",
+          "quantidade",
+          "status"
+        ],
+        "title": "EquipamentoOut",
+        "description": "Equipamento vinculado à unidade, no detalhe dela (006/R2.5)."
       }
     },
     "securitySchemes": {

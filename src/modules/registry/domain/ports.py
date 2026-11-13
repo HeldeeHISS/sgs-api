@@ -4,9 +4,17 @@ Os repositórios trabalham sobre a transação de quem os usa (a da requisição
 dependência `SessaoDeNegocio` da camada api): quem chama abre, confirma ou desfaz.
 """
 
+from collections.abc import Sequence
 from typing import Protocol
 from uuid import UUID
 
+from src.modules.registry.domain.busca import (
+    DetalheDaUnidade,
+    FiltrosDeUnidades,
+    Ordenacao,
+    PaginaDeUnidades,
+    PaginaPedida,
+)
 from src.modules.registry.domain.equipamento import DadosDoEquipamento, Equipamento
 from src.modules.registry.domain.referencia import (
     Alteracao,
@@ -42,6 +50,23 @@ class RepositorioDeReferencias(Protocol):
     async def equipamentos_do_tipo(self, codigo: str) -> int:
         """Quantos equipamentos apontam o tipo de equipamento com esse código."""
         ...
+
+
+class EscopoDeLeitura(Protocol):
+    """O que a busca lê do escopo de leitura do usuário (`EscopoLeitura` da spec 003): tudo, se
+    `global_`; senão, as áreas técnicas, os distritos e as unidades listados."""
+
+    @property
+    def global_(self) -> bool: ...
+
+    @property
+    def areas(self) -> Sequence[int]: ...
+
+    @property
+    def distritos(self) -> Sequence[int]: ...
+
+    @property
+    def unidades(self) -> Sequence[UUID]: ...
 
 
 class RepositorioDeUnidades(Protocol):
@@ -88,6 +113,22 @@ class RepositorioDeUnidades(Protocol):
         """Desativa a unidade pelo procedimento do banco, `sp_deactivate_unit` (011/R6.1), e a
         devolve como ficou, com o status que tinha. Já inativa, nada muda (011/R6.4). `None` se
         ela não existe (011/R6.3)."""
+        ...
+
+    async def buscar(
+        self,
+        escopo: EscopoDeLeitura,
+        filtros: FiltrosDeUnidades,
+        ordem: Ordenacao,
+        pagina: PaginaPedida,
+    ) -> PaginaDeUnidades:
+        """As unidades no escopo e nos filtros, na ordem dada, e o total delas (006/R2.1 a
+        R2.4, R2.6)."""
+        ...
+
+    async def detalhar(self, id_: UUID) -> DetalheDaUnidade | None:
+        """A unidade com os equipamentos e serviços vinculados (006/R2.5); `None` se ela não
+        existe."""
         ...
 
 

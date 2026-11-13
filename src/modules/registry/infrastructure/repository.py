@@ -3,16 +3,28 @@
 SQL escrito à mão, em `sql/*.sql`, executado com `text()` e parâmetros nomeados (ADR-0009).
 """
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import RowMapping, bindparam
+from sqlalchemy import bindparam
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.escopo import parametros_de_escopo
 from src.core.sql import consulta
+from src.modules.registry.domain.busca import (
+    DetalheDaUnidade,
+    EquipamentoDaUnidade,
+    FiltrosDeUnidades,
+    Ordenacao,
+    PaginaDeUnidades,
+    PaginaPedida,
+    ServicoDaUnidade,
+)
+from src.modules.registry.domain.ports import EscopoDeLeitura
 from src.modules.registry.domain.unidade import (
     CAMPOS_DE_NEGOCIO,
     DadosDaUnidade,
@@ -37,6 +49,9 @@ _AREA_DA_UNIDADE = consulta(_SQL / "health_unit_technical_area.sql")
 _ATUALIZAR_UNIDADE = consulta(_SQL / "update_health_unit.sql").bindparams(
     bindparam("opening_hours", type_=JSONB)
 )
+_BUSCAR_UNIDADES = consulta(_SQL / "search_health_units.sql")
+_EQUIPAMENTOS_DA_UNIDADE = consulta(_SQL / "health_unit_equipments.sql")
+_SERVICOS_DA_UNIDADE = consulta(_SQL / "health_unit_services.sql")
 
 # SQLSTATE do Postgres para valor repetido num índice único.
 _UNIQUE_VIOLATION = "23505"
@@ -113,6 +128,61 @@ class SqlRepositorioDeUnidades:
         linha = (await self._session.execute(_UNIDADE_PELO_ID, {"id": id_})).mappings().one()
         return Desativacao(status_anterior=status_anterior, unidade=_unidade(linha))
 
+    async def buscar(
+        self,
+        escopo: EscopoDeLeitura,
+        filtros: FiltrosDeUnidades,
+        ordem: Ordenacao,
+        pagina: PaginaPedida,
+    ) -> PaginaDeUnidades:
+        parametros: dict[str, Any] = {
+            **parametros_de_escopo(escopo),
+            "q": filtros.texto,
+            "q_like": None if filtros.texto is None else _escapar_like(filtros.texto),
+            "unit_type_id": filtros.tipo,
+            "technical_area_id": filtros.area,
+            "district_id": filtros.distrito,
+            "status": filtros.status,
+            "with_pending": filtros.com_pendencias,
+            "order_by": ordem,
+            "limit": pagina.tamanho,
+            "offset": pagina.offset,
+        }
+        linhas = list((await self._session.execute(_BUSCAR_UNIDADES, parametros)).mappings())
+        if linhas:
+            total = int(linhas[0]["total"])
+        elif pagina.offset == 0:
+            total = 0
+        else:
+            # Numa página depois da última não volta linha; o total sai da primeira.
+            primeira = await self._session.execute(
+                _BUSCAR_UNIDADES, {**parametros, "limit": 1, "offset": 0}
+            )
+            linha = primeira.mappings().first()
+            total = 0 if linha is None else int(linha["total"])
+        itens = tuple(
+            _unidade({k: v for k, v in linha.items() if k != "total"}) for linha in linhas
+        )
+        return PaginaDeUnidades(itens=itens, total=total)
 
-def _unidade(linha: RowMapping) -> Unidade:
+    async def detalhar(self, id_: UUID) -> DetalheDaUnidade | None:
+        unidade = await self.ler(id_)
+        if unidade is None:
+            return None
+        equipamentos = await self._session.execute(_EQUIPAMENTOS_DA_UNIDADE, {"unit_id": id_})
+        servicos = await self._session.execute(_SERVICOS_DA_UNIDADE, {"unit_id": id_})
+        return DetalheDaUnidade(
+            unidade=unidade,
+            equipamentos=tuple(EquipamentoDaUnidade(**linha) for linha in equipamentos.mappings()),
+            servicos=tuple(ServicoDaUnidade(**linha) for linha in servicos.mappings()),
+        )
+
+
+def _escapar_like(texto: str) -> str:
+    """O texto com a barra invertida, `%` e `_` escapados, para o LIKE procurá-los como
+    caracteres (a barra invertida é o escape padrão do Postgres)."""
+    return texto.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _unidade(linha: Mapping[Any, Any]) -> Unidade:
     return Unidade(**dict(linha))
