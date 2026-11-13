@@ -130,6 +130,18 @@ def pode(perms: PermissoesEfetivas, perm: str, alvo: Alvo | None = None) -> bool
     return any(_cobre(escopo, alvo) for escopo in escopos)
 
 
+def pode_na_area(perms: PermissoesEfetivas, perm: str, area_id: int) -> bool:
+    """Diz se o usuário tem `perm` com escopo `Global` ou na `Area` dada.
+
+    Para o que só se altera da área técnica para cima, como os campos estruturais da unidade
+    (006/R3.4): escopo de distrito ou de unidade não basta, mesmo cobrindo a unidade.
+    """
+    return any(
+        isinstance(escopo, Global) or (isinstance(escopo, Area) and escopo.id == area_id)
+        for escopo in perms.get(perm, ())
+    )
+
+
 def _cobre(escopo: Escopo, alvo: Alvo) -> bool:
     match escopo:
         case Global():

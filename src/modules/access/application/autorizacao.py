@@ -13,7 +13,13 @@ from uuid import UUID
 from src.core.errors import Forbidden, NotFound
 from src.modules.access.application.permissoes import ResolvedorDePermissoes
 from src.modules.access.domain import authorization
-from src.modules.access.domain.authorization import Alvo, EscopoLeitura, PermissoesEfetivas, pode
+from src.modules.access.domain.authorization import (
+    Alvo,
+    EscopoLeitura,
+    PermissoesEfetivas,
+    pode,
+    pode_na_area,
+)
 from src.modules.access.domain.ports import RepositorioDePermissoes, ResolvedorDeAlvo
 from src.modules.audit.application.registrar import Ator, AuditStore, Entidade, registrar
 
@@ -35,6 +41,7 @@ __all__ = [
     "UsuarioAtual",
     "auditar_negacao",
     "escopo_de_leitura",
+    "exigir_na_area",
     "exigir_no_escopo",
     "verificar",
 ]
@@ -61,10 +68,18 @@ class AcessoNegado(Forbidden):
     """403 (R4.2, R4.3). Leva a permissão exigida e o recurso para a auditoria (R4.6).
 
     `auditada` diz se o `acesso.negado` já foi gravado, para quem o grava não repetir.
+    `extensoes` vão para o corpo do 403, como os campos que o usuário não pode alterar
+    (006/R3.4).
     """
 
-    def __init__(self, permissao: str, recurso: Recurso | None = None) -> None:
-        super().__init__("Você não tem permissão para esta ação.")
+    def __init__(
+        self,
+        permissao: str,
+        recurso: Recurso | None = None,
+        *,
+        extensoes: Mapping[str, object] | None = None,
+    ) -> None:
+        super().__init__("Você não tem permissão para esta ação.", extensoes=extensoes)
         self.permissao = permissao
         self.recurso = recurso
         self.auditada = False
@@ -106,6 +121,21 @@ def exigir_no_escopo(usuario: UsuarioAtual, permissao: str, alvo: Alvo) -> None:
     """
     if not pode(usuario.permissoes, permissao, alvo):
         raise AcessoNegado(permissao)
+
+
+def exigir_na_area(
+    usuario: UsuarioAtual,
+    permissao: str,
+    area_id: int,
+    *,
+    recurso: Recurso | None = None,
+    extensoes: Mapping[str, object] | None = None,
+) -> None:
+    """Levanta `AcessoNegado` se o usuário não tem `permissao` com escopo global ou na área
+    técnica `area_id` (006/R3.4: campos estruturais da unidade). Auditado pela `SessaoDeNegocio`
+    da camada api, com o recurso, se houver; `extensoes` vão para o corpo do 403."""
+    if not pode_na_area(usuario.permissoes, permissao, area_id):
+        raise AcessoNegado(permissao, recurso, extensoes=extensoes)
 
 
 def escopo_de_leitura(usuario: UsuarioAtual, permissao: str) -> EscopoLeitura:

@@ -29,7 +29,7 @@ def problem_response(
     request_id: str | None,
     headers: Mapping[str, str] | None = None,
     errors: Sequence[FieldError] | None = None,
-    extensions: Mapping[str, str] | None = None,
+    extensions: Mapping[str, object] | None = None,
 ) -> JSONResponse:
     body: dict[str, Any] = {
         "type": type_,
