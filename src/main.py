@@ -15,6 +15,7 @@ from src.core.logging import configure_logging
 from src.core.problem import install_error_handlers
 from src.core.request_context import RequestContextMiddleware
 from src.core.security_headers import SecurityHeadersMiddleware
+from src.modules.access.api import me
 from src.modules.access.application.permissoes import ResolvedorDePermissoes
 from src.modules.access.infrastructure.repository import (
     SqlRepositorioDePermissoes,
@@ -84,6 +85,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     install_error_handlers(app)
     app.include_router(health.router)
     app.include_router(jwks.router)
+    app.include_router(me.router)
     app.include_router(unidades.router)
     app.include_router(historico.router)
     app.include_router(catalogo.router)

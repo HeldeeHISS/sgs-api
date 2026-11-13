@@ -74,6 +74,39 @@
         }
       }
     },
+    "/api/v1/me": {
+      "get": {
+        "tags": [
+          "perfil"
+        ],
+        "summary": "Perfil do usuário logado",
+        "description": "003/R5.1. Os papéis e as permissões são os vigentes agora, como o `require()` os vê.",
+        "operationId": "me_api_v1_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PerfilOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/unidades": {
       "post": {
         "tags": [
@@ -1536,6 +1569,38 @@
         "title": "DistritosCnesOut",
         "description": "Percentual de unidades sem CNES da rede (as unidades no escopo e no filtro; nulo se não há\nnenhuma) e os distritos acima dele, do maior para o menor percentual."
       },
+      "EscopoOut": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "global",
+              "area",
+              "distrito",
+              "unidade"
+            ],
+            "title": "Tipo"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id",
+            "description": "Id da área técnica, do distrito ou da unidade, em texto; nulo se global."
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "id"
+        ],
+        "title": "EscopoOut"
+      },
       "EventoHistoricoOut": {
         "properties": {
           "id": {
@@ -1977,6 +2042,51 @@
         ],
         "title": "PaginaOut[UnidadeResumoOut]"
       },
+      "PapelOut": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "escopo": {
+            "$ref": "#/components/schemas/EscopoOut"
+          },
+          "origem": {
+            "type": "string",
+            "enum": [
+              "direta",
+              "grupo"
+            ],
+            "title": "Origem",
+            "description": "Atribuição direta ou derivada de grupo do diretório."
+          },
+          "valido_ate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valido Ate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "nome",
+          "escopo",
+          "origem",
+          "valido_ate"
+        ],
+        "title": "PapelOut"
+      },
       "ParametroOut": {
         "properties": {
           "nome": {
@@ -2045,6 +2155,63 @@
         ],
         "title": "ParticaoOut",
         "description": "Uma partição do log do banco (011/R6.9): nome, intervalo (`de` incluído, `ate` excluído)\ne quantidade de registros. A DEFAULT, que recebe o que não cai em mês nenhum, vem com `de` e\n`ate` nulos."
+      },
+      "PerfilOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "papeis": {
+            "items": {
+              "$ref": "#/components/schemas/PapelOut"
+            },
+            "type": "array",
+            "title": "Papeis"
+          },
+          "permissoes": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/EscopoOut"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Permissoes",
+            "description": "Código da permissão (`recurso:acao`) → escopos em que o usuário a tem."
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "nome",
+          "email",
+          "papeis",
+          "permissoes"
+        ],
+        "title": "PerfilOut",
+        "description": "003/R5.1: dados básicos, papéis com escopos e permissões efetivas."
       },
       "SituacaoCadastral": {
         "type": "string",
