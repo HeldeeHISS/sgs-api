@@ -532,6 +532,188 @@
           }
         }
       }
+    },
+    "/api/v1/dashboard/consultas/distritos-cnes-acima-da-media": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Distritos com mais unidades sem CNES que a rede (subconsulta escalar)",
+        "description": "011/R2.3, R2.5: distritos cujo percentual de unidades sem CNES passa o da rede, que é o\nconjunto de unidades no escopo de leitura do usuário (e no filtro de tipo).",
+        "operationId": "distritos_cnes_acima_da_media_api_v1_dashboard_consultas_distritos_cnes_acima_da_media_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id do tipo de unidade.",
+              "title": "Tipo"
+            },
+            "description": "Id do tipo de unidade."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DistritosCnesOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `dashboard:read`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Filtro mal formado, ou distrito ou tipo inexistente",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/consultas/unidades-servico-fora-cnes": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Unidades com serviço fora do CNES (subconsulta EXISTS)",
+        "description": "011/R2.4: unidades que ofertam ao menos um serviço fora do CNES, com a quantidade deles,\nno escopo de leitura do usuário.",
+        "operationId": "unidades_servico_fora_cnes_api_v1_dashboard_consultas_unidades_servico_fora_cnes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "distrito",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id do distrito sanitário.",
+              "title": "Distrito"
+            },
+            "description": "Id do distrito sanitário."
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id do tipo de unidade.",
+              "title": "Tipo"
+            },
+            "description": "Id do tipo de unidade."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 1,
+              "description": "Página, a partir de 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Página, a partir de 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Itens por página (padrão 20, máximo 100).",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Itens por página (padrão 20, máximo 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaOut_UnidadeForaCnesOut_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `dashboard:read`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Filtro mal formado, ou distrito ou tipo inexistente",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -622,6 +804,69 @@
         ],
         "title": "ConciliacaoOut",
         "description": "Linha da conciliação unidade x equipamento; o lado que faltar vem nulo. `distrito` é o\nnome do distrito da unidade e `equipamento_tipo`, o nome do tipo do equipamento."
+      },
+      "DistritoCnesOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "total_unidades": {
+            "type": "integer",
+            "title": "Total Unidades"
+          },
+          "sem_cnes": {
+            "type": "integer",
+            "title": "Sem Cnes"
+          },
+          "percentual": {
+            "type": "number",
+            "title": "Percentual"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "total_unidades",
+          "sem_cnes",
+          "percentual"
+        ],
+        "title": "DistritoCnesOut",
+        "description": "Distrito acima da rede em unidades sem CNES; `percentual` de 0 a 100, duas casas."
+      },
+      "DistritosCnesOut": {
+        "properties": {
+          "percentual_rede": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percentual Rede"
+          },
+          "distritos": {
+            "items": {
+              "$ref": "#/components/schemas/DistritoCnesOut"
+            },
+            "type": "array",
+            "title": "Distritos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "percentual_rede",
+          "distritos"
+        ],
+        "title": "DistritosCnesOut",
+        "description": "Percentual de unidades sem CNES da rede (as unidades no escopo e no filtro; nulo se não há\nnenhuma) e os distritos acima dele, do maior para o menor percentual."
       },
       "EventoHistoricoOut": {
         "properties": {
@@ -853,6 +1098,37 @@
         ],
         "title": "PaginaOut[EventoHistoricoOut]"
       },
+      "PaginaOut_UnidadeForaCnesOut_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/UnidadeForaCnesOut"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho"
+        ],
+        "title": "PaginaOut[UnidadeForaCnesOut]"
+      },
       "PaginaOut_UnidadeResumoOut_": {
         "properties": {
           "itens": {
@@ -1036,6 +1312,53 @@
         ],
         "title": "UnidadeCreate",
         "description": "Unidade nova (006/R1.2: nome, tipo, distrito, endereço com CEP e status obrigatórios)."
+      },
+      "UnidadeForaCnesOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "cnes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnes"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "distrito": {
+            "type": "string",
+            "title": "Distrito"
+          },
+          "servicos_fora_cnes": {
+            "type": "integer",
+            "title": "Servicos Fora Cnes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "cnes",
+          "tipo",
+          "distrito",
+          "servicos_fora_cnes"
+        ],
+        "title": "UnidadeForaCnesOut",
+        "description": "Unidade com serviço fora do CNES e a quantidade desses serviços (011/R2.4)."
       },
       "UnidadeOut": {
         "properties": {

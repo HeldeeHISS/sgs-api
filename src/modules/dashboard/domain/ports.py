@@ -8,10 +8,12 @@ from typing import Protocol
 from uuid import UUID
 
 from src.modules.dashboard.domain.consultas import (
+    DistritosCnes,
     Filtros,
     ItemConciliacao,
     Pagina,
     Resultado,
+    UnidadeForaCnes,
     UnidadeResumo,
 )
 
@@ -56,4 +58,19 @@ class ConsultasDashboard(Protocol):
     ) -> Resultado[ItemConciliacao]:
         """Pares unidade-equipamento, unidades sem equipamento e equipamentos sem unidade
         (011/R2.2). Os equipamentos sem unidade só vêm com escopo global e sem filtro (R2.6)."""
+        ...
+
+    async def distritos_cnes_acima_da_rede(
+        self, escopo: EscopoDeLeitura, filtros: Filtros
+    ) -> DistritosCnes:
+        """Distritos com percentual de unidades sem CNES maior que o da rede, que é o conjunto de
+        unidades no escopo e no filtro de tipo (011/R2.3, R2.5). O filtro de distrito não se
+        aplica."""
+        ...
+
+    async def unidades_com_servico_fora_cnes(
+        self, escopo: EscopoDeLeitura, filtros: Filtros, pagina: Pagina
+    ) -> Resultado[UnidadeForaCnes]:
+        """Unidades com ao menos um serviço fora do CNES, e quantos (011/R2.4), por distrito e
+        nome."""
         ...

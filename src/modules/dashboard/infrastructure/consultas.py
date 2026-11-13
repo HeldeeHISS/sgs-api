@@ -15,11 +15,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.escopo import parametros_de_escopo
 from src.core.sql import consulta
 from src.modules.dashboard.domain.consultas import (
+    DistritoCnes,
+    DistritosCnes,
     Filtros,
     ItemConciliacao,
     Pagina,
     Resultado,
     SituacaoConciliacao,
+    UnidadeForaCnes,
     UnidadeResumo,
 )
 from src.modules.dashboard.domain.ports import EscopoDeLeitura
@@ -28,6 +31,8 @@ _SQL = Path(__file__).parent / "sql"
 
 _UNIDADES_SEM_SERVICO = consulta(_SQL / "units_without_services.sql")
 _CONCILIACAO_UNIDADE_EQUIPAMENTO = consulta(_SQL / "unit_equipment_reconciliation.sql")
+_DISTRITOS_CNES_ACIMA_DA_REDE = consulta(_SQL / "districts_cnes_above_network.sql")
+_UNIDADES_COM_SERVICO_FORA_CNES = consulta(_SQL / "units_with_services_outside_cnes.sql")
 # Conferência dos filtros contra as referências da 006, antes da consulta (011/R2.9).
 _DISTRITO_EXISTE = consulta(_SQL / "district_exists.sql")
 _TIPO_DE_UNIDADE_EXISTE = consulta(_SQL / "unit_type_exists.sql")
@@ -49,14 +54,17 @@ class SqlConsultasDashboard:
         self, escopo: EscopoDeLeitura, filtros: Filtros, pagina: Pagina
     ) -> Resultado[UnidadeResumo]:
         linhas, total = await self._pagina(_UNIDADES_SEM_SERVICO, escopo, filtros, pagina)
+        return Resultado(itens=tuple(_resumo(linha) for linha in linhas), total=total)
+
+    async def unidades_com_servico_fora_cnes(
+        self, escopo: EscopoDeLeitura, filtros: Filtros, pagina: Pagina
+    ) -> Resultado[UnidadeForaCnes]:
+        linhas, total = await self._pagina(_UNIDADES_COM_SERVICO_FORA_CNES, escopo, filtros, pagina)
         return Resultado(
             itens=tuple(
-                UnidadeResumo(
-                    id=linha["unit_id"],
-                    nome=linha["name"],
-                    cnes=linha["cnes"],
-                    tipo=linha["unit_type_name"],
-                    distrito=linha["district_name"],
+                UnidadeForaCnes(
+                    unidade=_resumo(linha),
+                    servicos_fora_cnes=linha["services_outside_cnes_count"],
                 )
                 for linha in linhas
             ),
@@ -85,6 +93,30 @@ class SqlConsultasDashboard:
             total=total,
         )
 
+    async def distritos_cnes_acima_da_rede(
+        self, escopo: EscopoDeLeitura, filtros: Filtros
+    ) -> DistritosCnes:
+        parametros = {**parametros_de_escopo(escopo), "unit_type_id": filtros.tipo}
+        resultado = await self._session.execute(_DISTRITOS_CNES_ACIMA_DA_REDE, parametros)
+        # Sempre há uma linha, com o percentual da rede; os campos do distrito vêm nulos quando
+        # nenhum distrito fica acima dela.
+        linhas = list(resultado.mappings())
+        rede = linhas[0]["network_percentage"]
+        return DistritosCnes(
+            percentual_rede=None if rede is None else float(rede),
+            distritos=tuple(
+                DistritoCnes(
+                    id=linha["district_id"],
+                    nome=linha["district_name"],
+                    total_unidades=linha["unit_count"],
+                    sem_cnes=linha["without_cnes_count"],
+                    percentual=float(linha["percentage"]),
+                )
+                for linha in linhas
+                if linha["district_id"] is not None
+            ),
+        )
+
     async def _pagina(
         self, consulta: TextClause, escopo: EscopoDeLeitura, filtros: Filtros, pagina: Pagina
     ) -> tuple[list[dict[str, Any]], int]:
@@ -109,3 +141,13 @@ class SqlConsultasDashboard:
         primeira = await self._session.execute(consulta, {**parametros, "limit": 1, "offset": 0})
         linha = primeira.mappings().first()
         return [], 0 if linha is None else int(linha["total"])
+
+
+def _resumo(linha: dict[str, Any]) -> UnidadeResumo:
+    return UnidadeResumo(
+        id=linha["unit_id"],
+        nome=linha["name"],
+        cnes=linha["cnes"],
+        tipo=linha["unit_type_name"],
+        distrito=linha["district_name"],
+    )
