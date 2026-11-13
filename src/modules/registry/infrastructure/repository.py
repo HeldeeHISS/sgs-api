@@ -9,7 +9,7 @@ from uuid import UUID
 
 from sqlalchemy import RowMapping, bindparam
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.sql import consulta
@@ -18,6 +18,7 @@ from src.modules.registry.domain.unidade import (
     DadosDaUnidade,
     Desativacao,
     Unidade,
+    UnidadeRepetidaError,
 )
 
 _SQL = Path(__file__).parent / "sql"
@@ -32,6 +33,13 @@ _ID_PELO_CNES = consulta(_SQL / "health_unit_id_by_cnes.sql")
 _ID_PELO_NOME = consulta(_SQL / "health_unit_id_by_name.sql")
 _DESATIVAR = consulta(_SQL / "deactivate_health_unit.sql")
 _UNIDADE_PELO_ID = consulta(_SQL / "health_unit_by_id.sql")
+_AREA_DA_UNIDADE = consulta(_SQL / "health_unit_technical_area.sql")
+_ATUALIZAR_UNIDADE = consulta(_SQL / "update_health_unit.sql").bindparams(
+    bindparam("opening_hours", type_=JSONB)
+)
+
+# SQLSTATE do Postgres para valor repetido num índice único.
+_UNIQUE_VIOLATION = "23505"
 
 # SQLSTATE próprio que o `sp_deactivate_unit` levanta para unidade inexistente (0011_06).
 _UNIDADE_INEXISTENTE = "SGS01"
@@ -63,6 +71,34 @@ class SqlRepositorioDeUnidades:
             _ID_PELO_NOME, {"district_id": district_id, "name": name}
         )
         return unidade
+
+    async def ler(self, id_: UUID) -> Unidade | None:
+        resultado = await self._session.execute(_UNIDADE_PELO_ID, {"id": id_})
+        linha = resultado.mappings().one_or_none()
+        return None if linha is None else _unidade(linha)
+
+    async def area_da_unidade(self, id_: UUID) -> int | None:
+        area: int | None = await self._session.scalar(_AREA_DA_UNIDADE, {"id": id_})
+        return area
+
+    async def atualizar(
+        self, id_: UUID, versao_esperada: int, dados: DadosDaUnidade
+    ) -> Unidade | None:
+        parametros: dict[str, Any] = {campo: getattr(dados, campo) for campo in CAMPOS_DE_NEGOCIO}
+        try:
+            # O savepoint desfaz só o UPDATE recusado; a transação da requisição segue, e o caso
+            # de uso ainda procura a unidade repetida para o 409.
+            async with self._session.begin_nested():
+                resultado = await self._session.execute(
+                    _ATUALIZAR_UNIDADE,
+                    {"id": id_, "expected_version": versao_esperada, **parametros},
+                )
+                linha = resultado.mappings().one_or_none()
+        except IntegrityError as erro:
+            if getattr(erro.orig, "sqlstate", None) == _UNIQUE_VIOLATION:
+                raise UnidadeRepetidaError from None
+            raise
+        return None if linha is None else _unidade(linha)
 
     async def desativar(self, id_: UUID) -> Desativacao | None:
         try:

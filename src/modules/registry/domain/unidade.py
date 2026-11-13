@@ -129,6 +129,11 @@ class Unidade(DadosDaUnidade):
         return {campo: getattr(self, campo) for campo in CAMPOS_DE_NEGOCIO}
 
 
+class UnidadeRepetidaError(Exception):
+    """A gravação repetiria o CNES de outra unidade ou o nome normalizado de outra no distrito
+    (006/R1.3, R1.4); nada foi gravado."""
+
+
 STATUS_INATIVA = "inativa"
 """Status da unidade desativada (006/R4.1). A unidade nunca é apagada (R4.2)."""
 

@@ -135,6 +135,115 @@
         ]
       }
     },
+    "/api/v1/unidades/{id}": {
+      "patch": {
+        "tags": [
+          "unidades"
+        ],
+        "summary": "Atualizar unidade de saúde",
+        "description": "006/R3, 011/R8.3. Aplica só os campos enviados e responde com a unidade e o `ETag` da\nversão nova, que o banco incrementa. Sem mudança, responde igual, sem alterar nem auditar.",
+        "operationId": "atualizar_api_v1_unidades__id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A versão em mãos, como veio no `ETag` (ex.: `\"3\"`). Sem ele, 428.",
+              "title": "If-Match"
+            },
+            "description": "A versão em mãos, como veio no `ETag` (ex.: `\"3\"`). Sem ele, 428."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnidadeUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnidadeOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `unidade:update` no escopo da unidade, ou alteração de distrito, tipo ou CNES sem escopo global ou na área técnica (os campos vêm em `campos`)",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "A unidade não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "409": {
+            "description": "Já existe unidade com o mesmo CNES ou o mesmo nome no distrito",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "412": {
+            "description": "A unidade mudou depois da versão informada em `If-Match`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, ou tipo de unidade ou distrito inexistente",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "428": {
+            "description": "Falta o cabeçalho `If-Match`",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
     "/api/v1/unidades/{id}/desativar": {
       "post": {
         "tags": [
@@ -2235,6 +2344,182 @@
         ],
         "title": "UnidadeResumoOut",
         "description": "Unidade numa consulta de qualidade; `tipo` e `distrito` são os nomes, para leitura."
+      },
+      "UnidadeUpdate": {
+        "properties": {
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome"
+          },
+          "cnes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9]{7}$",
+                "description": "Sete dígitos."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnes"
+          },
+          "tipo_unidade_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 32767.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo Unidade Id"
+          },
+          "distrito_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 32767.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distrito Id"
+          },
+          "cep": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9]{5}-?[0-9]{3}$",
+                "description": "Oito dígitos, com ou sem hífen."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cep"
+          },
+          "endereco": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endereco"
+          },
+          "bairro": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bairro"
+          },
+          "telefone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20,
+                "minLength": 1,
+                "pattern": "^[0-9()+\\- ]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefone"
+          },
+          "nome_gestor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 150,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome Gestor"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ativa",
+                  "inativa",
+                  "em_implantacao"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "UnidadeUpdate",
+        "description": "Alteração parcial da unidade (006/R3.1): só os campos enviados mudam. Mesmo formato do\n`UnidadeCreate`; um campo opcional enviado nulo é apagado (CNES nulo deixa a unidade\npendente, R1.5), e um obrigatório não pode vir nulo. Corpo vazio não muda nada (R3.6)."
       }
     },
     "securitySchemes": {

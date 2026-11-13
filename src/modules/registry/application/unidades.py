@@ -5,11 +5,26 @@ sessão, então a unidade e o registro de auditoria são gravados juntos ou nenh
 (AGENTS.md, regra 5).
 """
 
+from collections.abc import Mapping
+from dataclasses import replace
 from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
-from src.core.errors import Conflict, DomainValidationError, FieldError, NotFound
-from src.modules.access.application.autorizacao import Alvo, UsuarioAtual, exigir_no_escopo
+from src.core.errors import (
+    Conflict,
+    DomainValidationError,
+    FieldError,
+    NotFound,
+    PreconditionFailed,
+)
+from src.modules.access.application.autorizacao import (
+    Alvo,
+    Recurso,
+    UsuarioAtual,
+    exigir_na_area,
+    exigir_no_escopo,
+)
 from src.modules.audit.application.registrar import (
     Ator,
     AuditStore,
@@ -18,10 +33,26 @@ from src.modules.audit.application.registrar import (
     registrar,
 )
 from src.modules.registry.domain.ports import RepositorioDeUnidades
-from src.modules.registry.domain.unidade import DadosDaUnidade, Unidade
+from src.modules.registry.domain.unidade import (
+    CAMPOS_DE_NEGOCIO,
+    DadosDaUnidade,
+    Unidade,
+    UnidadeRepetidaError,
+    campos_estruturais_alterados,
+    diff,
+)
 
 # Reexportados para a camada api, que só importa a application.
-__all__ = ["DadosDaUnidade", "Unidade", "criar_unidade", "desativar_unidade"]
+__all__ = [
+    "DadosDaUnidade",
+    "Unidade",
+    "atualizar_unidade",
+    "criar_unidade",
+    "desativar_unidade",
+]
+
+# Nomes da API dos campos estruturais, para o 403 apontá-los (006/R3.4).
+_CAMPO_DA_API = {"district_id": "distrito_id", "unit_type_id": "tipo_unidade_id", "cnes": "cnes"}
 
 # `entity_type` dos eventos da unidade, também nos de equipamento e serviço (006/R5.3).
 ENTIDADE = "unidade"
@@ -72,6 +103,69 @@ async def criar_unidade(
     return unidade
 
 
+async def atualizar_unidade(
+    unidade_id: UUID,
+    alteracoes: Mapping[str, object],
+    *,
+    versao_esperada: int,
+    usuario: UsuarioAtual,
+    ator: Ator,
+    unidades: RepositorioDeUnidades,
+    auditoria: AuditStore,
+) -> Unidade:
+    """Aplica à unidade só os campos de `alteracoes` (nomes das colunas) e a devolve como ficou
+    (006/R3.1), com a versão nova que o trigger da 011 deu (R8); aqui ela nunca é incrementada.
+
+    A permissão e o escopo sobre a unidade já foram conferidos pelo `require` da rota (R3.3).
+    Levanta `PreconditionFailed` (412) se a unidade não está mais na `versao_esperada`, mudada pela
+    API ou fora dela (R3.2; 011/R8.3); `AcessoNegado` (403), apontando os campos, se muda
+    distrito, tipo ou CNES sem escopo global ou na área técnica da unidade (R3.4);
+    `DomainValidationError` (422) se o tipo ou o distrito novo não existe ou está desativado;
+    `Conflict` (409) se repete o CNES ou o nome no distrito de outra (R1.3, R1.4); `NotFound`
+    (404) se a unidade não existe. Registra `unidade.atualizada` com `{campo, de, para}` de cada
+    campo que mudou, na mesma transação (R3.5); sem mudança, devolve a unidade como está, sem
+    gravar nem auditar (R3.6).
+    """
+    atual = await unidades.ler(unidade_id)
+    if atual is None:
+        raise NotFound("O recurso pedido não existe.")
+    if atual.version != versao_esperada:
+        raise _versao_desatualizada()
+    enviados = {campo: alteracoes[campo] for campo in CAMPOS_DE_NEGOCIO if campo in alteracoes}
+    mudancas = diff(atual.campos_de_negocio(), enviados)
+    if not mudancas:
+        return atual
+    estruturais = campos_estruturais_alterados(mudancas)
+    if estruturais:
+        area = await unidades.area_da_unidade(unidade_id)
+        if area is None:
+            raise NotFound("O recurso pedido não existe.")
+        exigir_na_area(
+            usuario,
+            "unidade:update",
+            area,
+            recurso=Recurso(tipo=ENTIDADE, id=str(unidade_id)),
+            extensoes={"campos": [_CAMPO_DA_API[campo] for campo in estruturais]},
+        )
+    valores: dict[str, Any] = {m.campo: m.para for m in mudancas}
+    novos = replace(atual, **valores)
+    await _conferir_referencias(novos, estruturais, unidades)
+    try:
+        gravada = await unidades.atualizar(unidade_id, versao_esperada, novos)
+    except UnidadeRepetidaError:
+        raise await _conflito(novos, unidades, exceto=unidade_id) from None
+    if gravada is None:
+        raise _versao_desatualizada()
+    await registrar(
+        auditoria,
+        acao="unidade.atualizada",
+        ator=ator,
+        entidade=Entidade(tipo=ENTIDADE, id=str(unidade_id)),
+        mudancas=[Mudanca(campo=m.campo, de=_json(m.de), para=_json(m.para)) for m in mudancas],
+    )
+    return gravada
+
+
 async def desativar_unidade(
     unidade_id: UUID,
     *,
@@ -114,15 +208,42 @@ def _inexistente(campo: str, referencia: str) -> FieldError:
     return FieldError(campo=campo, mensagem=f"{referencia} inexistente ou desativado.")
 
 
-async def _conflito(dados: DadosDaUnidade, unidades: RepositorioDeUnidades) -> Conflict:
-    """O 409 de uma unidade que o banco recusou por repetir outra, apontando a existente."""
+def _versao_desatualizada() -> PreconditionFailed:
+    return PreconditionFailed(
+        "A unidade mudou depois da versão informada em If-Match. Leia de novo e refaça a alteração."
+    )
+
+
+async def _conferir_referencias(
+    dados: DadosDaUnidade, estruturais: list[str], unidades: RepositorioDeUnidades
+) -> None:
+    """422 se o tipo ou o distrito para o qual a unidade muda não existe ou está desativado,
+    como no cadastro (006/R1.2). O que não muda não é conferido de novo."""
+    erros: list[FieldError] = []
+    if "unit_type_id" in estruturais and await unidades.area_do_tipo(dados.unit_type_id) is None:
+        erros.append(_inexistente("tipo_unidade_id", "Tipo de unidade"))
+    if "district_id" in estruturais and not await unidades.distrito_ativo(dados.district_id):
+        erros.append(_inexistente("distrito_id", "Distrito"))
+    if erros:
+        raise DomainValidationError("A requisição tem campos inválidos.", errors=erros)
+
+
+async def _conflito(
+    dados: DadosDaUnidade, unidades: RepositorioDeUnidades, *, exceto: UUID | None = None
+) -> Conflict:
+    """O 409 de uma unidade que o banco recusou por repetir outra, apontando a existente.
+    `exceto` é a própria unidade, numa atualização: ela não conflita consigo mesma."""
     existente = None if dados.cnes is None else await unidades.com_cnes(dados.cnes)
+    if existente == exceto:
+        existente = None
     if existente is not None:
         return Conflict(
             "Já existe uma unidade com este CNES.",
             extensoes={"unidade_existente_id": str(existente)},
         )
     existente = await unidades.com_nome(dados.district_id, dados.name)
+    if existente == exceto:
+        existente = None
     if existente is not None:
         return Conflict(
             "Já existe uma unidade com este nome no distrito.",
