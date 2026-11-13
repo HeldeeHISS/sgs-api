@@ -134,6 +134,79 @@
           }
         ]
       }
+    },
+    "/api/v1/unidades/{id}/desativar": {
+      "post": {
+        "tags": [
+          "unidades"
+        ],
+        "summary": "Desativar unidade de saúde",
+        "description": "006/R4, 011/R6.1 a R6.4. Responde com a unidade inativa e o `ETag` da versão. Já inativa,\nresponde igual, sem alterar nada nem auditar.",
+        "operationId": "desativar_api_v1_unidades__id__desativar_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnidadeDesativacao"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnidadeOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `unidade:deactivate` no escopo da unidade",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "A unidade não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Motivo ausente ou inválido",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -354,6 +427,23 @@
         ],
         "title": "UnidadeCreate",
         "description": "Unidade nova (006/R1.2: nome, tipo, distrito, endereço com CEP e status obrigatórios)."
+      },
+      "UnidadeDesativacao": {
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Motivo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "motivo"
+        ],
+        "title": "UnidadeDesativacao",
+        "description": "Pedido de desativação: o motivo vai para a auditoria (006/R4.1)."
       },
       "UnidadeOut": {
         "properties": {

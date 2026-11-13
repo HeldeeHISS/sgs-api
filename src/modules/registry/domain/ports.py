@@ -7,7 +7,7 @@ dependência `SessaoDeNegocio` da camada api): quem chama abre, confirma ou desf
 from typing import Protocol
 from uuid import UUID
 
-from src.modules.registry.domain.unidade import DadosDaUnidade, Unidade
+from src.modules.registry.domain.unidade import DadosDaUnidade, Desativacao, Unidade
 
 
 class RepositorioDeUnidades(Protocol):
@@ -31,4 +31,10 @@ class RepositorioDeUnidades(Protocol):
     async def com_nome(self, district_id: int, name: str) -> UUID | None:
         """Id da unidade do distrito com o mesmo nome normalizado (`fn_normalize_name`), se
         houver."""
+        ...
+
+    async def desativar(self, id_: UUID) -> Desativacao | None:
+        """Desativa a unidade pelo procedimento do banco, `sp_deactivate_unit` (011/R6.1), e a
+        devolve como ficou, com o status que tinha. Já inativa, nada muda (011/R6.4). `None` se
+        ela não existe (011/R6.3)."""
         ...

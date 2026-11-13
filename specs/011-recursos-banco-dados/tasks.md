@@ -104,7 +104,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
   - Requisitos: R6.9, R7.7, R7.8
   - Pronto quando: `tests/integration/audit/test_log_banco_api.py` (filtros por período, tabela e `fora_da_api`; 403 sem escopo global) e `tests/integration/audit/test_particoes_api.py` (intervalo e contagem) passam
 
-- [ ] T16. Desativação pela rota (com 006/T6)
+- [x] T16. Desativação pela rota (com 006/T6)
   - Caso de uso chama o procedimento, traduz `SGS01` em `NotFound` e audita só quando muda.
   - Bloqueada por: T6, 006/T3
   - Requisitos: R6.2, R6.3, R6.4

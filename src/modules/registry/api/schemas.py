@@ -65,6 +65,14 @@ class UnidadeCreate(BaseModel):
         )
 
 
+class UnidadeDesativacao(BaseModel):
+    """Pedido de desativação: o motivo vai para a auditoria (006/R4.1)."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    motivo: str = Field(min_length=1, max_length=500)
+
+
 class UnidadeOut(BaseModel):
     """A unidade completa. `versao` é a mesma do cabeçalho `ETag` (006/R3.2)."""
 

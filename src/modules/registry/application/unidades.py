@@ -8,7 +8,7 @@ sessão, então a unidade e o registro de auditoria são gravados juntos ou nenh
 from decimal import Decimal
 from uuid import UUID
 
-from src.core.errors import Conflict, DomainValidationError, FieldError
+from src.core.errors import Conflict, DomainValidationError, FieldError, NotFound
 from src.modules.access.application.autorizacao import Alvo, UsuarioAtual, exigir_no_escopo
 from src.modules.audit.application.registrar import (
     Ator,
@@ -21,7 +21,7 @@ from src.modules.registry.domain.ports import RepositorioDeUnidades
 from src.modules.registry.domain.unidade import DadosDaUnidade, Unidade
 
 # Reexportados para a camada api, que só importa a application.
-__all__ = ["DadosDaUnidade", "Unidade", "criar_unidade"]
+__all__ = ["DadosDaUnidade", "Unidade", "criar_unidade", "desativar_unidade"]
 
 # `entity_type` dos eventos da unidade, também nos de equipamento e serviço (006/R5.3).
 ENTIDADE = "unidade"
@@ -70,6 +70,43 @@ async def criar_unidade(
         ],
     )
     return unidade
+
+
+async def desativar_unidade(
+    unidade_id: UUID,
+    *,
+    motivo: str,
+    ator: Ator,
+    unidades: RepositorioDeUnidades,
+    auditoria: AuditStore,
+) -> Unidade:
+    """Desativa a unidade (006/R4.1) pelo procedimento do banco e a devolve como ficou (011/R6.2).
+
+    A permissão e o escopo já foram conferidos pelo `require` da rota, sobre a própria unidade.
+    Registra `unidade.desativada` com o status de antes e o motivo, na mesma transação, só quando
+    o status muda: unidade que já estava inativa volta como está, sem auditoria (011/R6.4). Nada
+    é apagado (006/R4.2). Levanta `NotFound` (404), com detalhe fixo, se a unidade não existe
+    (011/R6.3).
+    """
+    desativacao = await unidades.desativar(unidade_id)
+    if desativacao is None:
+        raise NotFound("O recurso pedido não existe.")
+    if desativacao.mudou:
+        await registrar(
+            auditoria,
+            acao="unidade.desativada",
+            ator=ator,
+            entidade=Entidade(tipo=ENTIDADE, id=str(unidade_id)),
+            mudancas=[
+                Mudanca(
+                    campo="status",
+                    de=desativacao.status_anterior,
+                    para=desativacao.unidade.status,
+                )
+            ],
+            metadados={"motivo": motivo},
+        )
+    return desativacao.unidade
 
 
 def _inexistente(campo: str, referencia: str) -> FieldError:

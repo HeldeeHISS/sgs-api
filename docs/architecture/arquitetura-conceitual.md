@@ -244,6 +244,7 @@ sequenceDiagram
 | `GET/POST /api/v1/admin/usuarios` | `usuario:manage` | 003 |
 | `POST /api/v1/admin/diretorio/sincronizar` · `GET .../execucoes` | `diretorio:sync` | 004 |
 | `GET/POST/PATCH /api/v1/unidades` (+ equipamentos, serviços, referências) | `unidade:*`, `equipamento:write`, `servico:write` | 006 |
+| `POST /api/v1/unidades/{id}/desativar` | `unidade:deactivate` | 006, 011 |
 | `GET/POST/PATCH /api/v1/validacao/regras` · `/simular` · `/revalidar` | `regra_validacao:manage` | 007 |
 | `GET /api/v1/unidades/{id}/historico` · `/auditoria/eventos` · `/auditoria/verificar` | `auditoria:read` | 008 |
 | `GET /api/v1/dashboard/resumo` | `dashboard:read` | 009 |
