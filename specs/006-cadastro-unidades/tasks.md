@@ -25,7 +25,7 @@
   - Sem incrementar `version` (trigger da 011); no mesmo PR da 011/T17.
   - Requisitos: R3.1–R3.6
   - Pronto quando: `tests/integration/registry/test_atualizar_unidade.py` passa
-- [ ] T6. Desativar unidade
+- [x] T6. Desativar unidade
   - Bloqueada por: T3, 011/T6
   - Pelo `sp_deactivate_unit` da 011; no mesmo PR da 011/T16.
   - Requisitos: R4.1, R4.2
