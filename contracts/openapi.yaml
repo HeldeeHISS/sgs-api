@@ -787,6 +787,121 @@
           }
         }
       }
+    },
+    "/api/v1/dashboard/consultas/inventario": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Inventário da rede (view vw_unit_inventory)",
+        "description": "011/R4.1 a R4.3: uma linha por unidade, com situação cadastral e contagens, a partir da view\nde inventário, no escopo de leitura do usuário. Sem dado pessoal.",
+        "operationId": "inventario_api_v1_dashboard_consultas_inventario_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "distrito",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id do distrito sanitário.",
+              "title": "Distrito"
+            },
+            "description": "Id do distrito sanitário."
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id do tipo de unidade.",
+              "title": "Tipo"
+            },
+            "description": "Id do tipo de unidade."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 1,
+              "description": "Página, a partir de 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Página, a partir de 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Itens por página (padrão 20, máximo 100).",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Itens por página (padrão 20, máximo 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaOut_InventarioOut_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `dashboard:read`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Filtro mal formado, ou distrito ou tipo inexistente",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1027,6 +1142,92 @@
         ],
         "title": "HealthStatus"
       },
+      "InventarioOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "cnes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnes"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "situacao_cadastral": {
+            "$ref": "#/components/schemas/SituacaoCadastral"
+          },
+          "tipo_id": {
+            "type": "integer",
+            "title": "Tipo Id"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "area_tecnica_id": {
+            "type": "integer",
+            "title": "Area Tecnica Id"
+          },
+          "area_tecnica": {
+            "type": "string",
+            "title": "Area Tecnica"
+          },
+          "distrito_id": {
+            "type": "integer",
+            "title": "Distrito Id"
+          },
+          "distrito": {
+            "type": "string",
+            "title": "Distrito"
+          },
+          "equipamentos": {
+            "type": "integer",
+            "title": "Equipamentos"
+          },
+          "servicos": {
+            "type": "integer",
+            "title": "Servicos"
+          },
+          "servicos_fora_cnes": {
+            "type": "integer",
+            "title": "Servicos Fora Cnes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "cnes",
+          "status",
+          "situacao_cadastral",
+          "tipo_id",
+          "tipo",
+          "area_tecnica_id",
+          "area_tecnica",
+          "distrito_id",
+          "distrito",
+          "equipamentos",
+          "servicos",
+          "servicos_fora_cnes"
+        ],
+        "title": "InventarioOut",
+        "description": "Unidade no inventário da rede (011/R4.1): as colunas da `vw_unit_inventory`, sem dado\npessoal (011/R4.2). Tipo, área técnica e distrito vêm com o id (o mesmo dos filtros) e o nome;\nas quantidades contam equipamentos e serviços da unidade em qualquer status."
+      },
       "Jwk": {
         "properties": {
           "kty": {
@@ -1171,6 +1372,37 @@
         ],
         "title": "PaginaOut[EventoHistoricoOut]"
       },
+      "PaginaOut_InventarioOut_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/InventarioOut"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho"
+        ],
+        "title": "PaginaOut[InventarioOut]"
+      },
       "PaginaOut_UnidadeForaCnesOut_": {
         "properties": {
           "itens": {
@@ -1232,6 +1464,17 @@
           "tamanho"
         ],
         "title": "PaginaOut[UnidadeResumoOut]"
+      },
+      "SituacaoCadastral": {
+        "type": "string",
+        "enum": [
+          "inativa",
+          "com_pendencias",
+          "sem_cnes",
+          "regular"
+        ],
+        "title": "SituacaoCadastral",
+        "description": "Situação cadastral da unidade, por `fn_registration_status` (011/R5.3)."
       },
       "SituacaoConciliacao": {
         "type": "string",

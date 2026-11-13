@@ -11,8 +11,10 @@ from src.modules.dashboard.domain.consultas import (
     DistritosCnes,
     Filtros,
     ItemConciliacao,
+    ItemInventario,
     Pagina,
     Resultado,
+    SituacaoCadastral,
     SituacaoConciliacao,
     UnidadeForaCnes,
     UnidadeResumo,
@@ -27,13 +29,16 @@ __all__ = [
     "DistritosCnes",
     "Filtros",
     "ItemConciliacao",
+    "ItemInventario",
     "Pagina",
     "Resultado",
+    "SituacaoCadastral",
     "SituacaoConciliacao",
     "UnidadeForaCnes",
     "UnidadeResumo",
     "conciliacao_unidade_equipamento",
     "distritos_cnes_acima_da_rede",
+    "inventario",
     "unidades_com_servico_fora_cnes",
     "unidades_sem_servico",
 ]
@@ -77,6 +82,16 @@ async def unidades_com_servico_fora_cnes(
     await _conferir_filtros(consultas, filtros)
     escopo = escopo_de_leitura(usuario, PERMISSAO)
     return await consultas.unidades_com_servico_fora_cnes(escopo, filtros, pagina)
+
+
+async def inventario(
+    consultas: ConsultasDashboard, usuario: UsuarioAtual, filtros: Filtros, pagina: Pagina
+) -> Resultado[ItemInventario]:
+    """011/R4.3: inventário da rede a partir da view, no escopo de leitura do usuário e nos
+    filtros de distrito e tipo."""
+    await _conferir_filtros(consultas, filtros)
+    escopo = escopo_de_leitura(usuario, PERMISSAO)
+    return await consultas.inventario(escopo, filtros, pagina)
 
 
 async def _conferir_filtros(consultas: ConsultasDashboard, filtros: Filtros) -> None:
