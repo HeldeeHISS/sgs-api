@@ -7,7 +7,40 @@ dependência `SessaoDeNegocio` da camada api): quem chama abre, confirma ou desf
 from typing import Protocol
 from uuid import UUID
 
+from src.modules.registry.domain.referencia import (
+    Alteracao,
+    DadosDaReferencia,
+    Referencia,
+    TipoDeReferencia,
+)
 from src.modules.registry.domain.unidade import DadosDaUnidade, Desativacao, Unidade
+
+
+class RepositorioDeReferencias(Protocol):
+    async def listar(self, tipo: TipoDeReferencia) -> list[Referencia]:
+        """Todos os itens da tabela, ativos e desativados, pelo id (ordem da semeadura)."""
+        ...
+
+    async def area_ativa(self, area_tecnica_id: int) -> bool:
+        """Se a área técnica existe e está ativa."""
+        ...
+
+    async def inserir(self, tipo: TipoDeReferencia, dados: DadosDaReferencia) -> Referencia | None:
+        """Grava o item novo, ativo; `None`, sem gravar nada, se o código já é de outro."""
+        ...
+
+    async def atualizar(
+        self, tipo: TipoDeReferencia, id_: int, mudancas: dict[str, object]
+    ) -> Alteracao | None:
+        """Aplica os campos enviados (nomes da API) e devolve o item antes e depois; `None` se
+        ele não existe. Levanta `CodigoRepetidoError` se o código novo já é de outro item, sem
+        mudar nada. No tipo de equipamento, o código novo chega aos equipamentos pela FK com ON
+        UPDATE CASCADE (011/R9.2)."""
+        ...
+
+    async def equipamentos_do_tipo(self, codigo: str) -> int:
+        """Quantos equipamentos apontam o tipo de equipamento com esse código."""
+        ...
 
 
 class RepositorioDeUnidades(Protocol):
