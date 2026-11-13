@@ -122,7 +122,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
   - Requisitos: R9.2
   - Pronto quando: `tests/integration/registry/test_referencia_codigo.py` passa (equipamentos com o código novo; `referencia.atualizada` com `equipamentos_afetados`; 409 com código repetido)
 
-- [ ] T19. Catálogo de consultas
+- [x] T19. Catálogo de consultas
   - Lista fixa de descrições (inclui histórico, log e partições) e rota filtrada pelas permissões efetivas.
   - Bloqueada por: T11, T12, T13, T14, T15
   - Requisitos: R3.1, R3.2
