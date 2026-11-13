@@ -135,6 +135,174 @@
         ]
       }
     },
+    "/api/v1/unidades/{id}/historico": {
+      "get": {
+        "tags": [
+          "auditoria"
+        ],
+        "summary": "Histórico de alterações da unidade",
+        "description": "008/R1.1, 008/R1.3, 011/R4.5: eventos da unidade e dos seus equipamentos e serviços,\nlidos da `vw_unit_history`, nos filtros pedidos, do mais recente ao mais antigo.",
+        "operationId": "historico_da_unidade_api_v1_unidades__id__historico_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 1,
+              "description": "Página, a partir de 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Página, a partir de 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Itens por página (padrão 20, máximo 100).",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Itens por página (padrão 20, máximo 100)."
+          },
+          {
+            "name": "de",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Início do período, incluído (data e hora com fuso).",
+              "title": "De"
+            },
+            "description": "Início do período, incluído (data e hora com fuso)."
+          },
+          {
+            "name": "ate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Fim do período, incluído (data e hora com fuso).",
+              "title": "Ate"
+            },
+            "description": "Fim do período, incluído (data e hora com fuso)."
+          },
+          {
+            "name": "autor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id do usuário autor do evento.",
+              "title": "Autor"
+            },
+            "description": "Id do usuário autor do evento."
+          },
+          {
+            "name": "campo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Nome do campo alterado, como gravado na lista {campo, de, para}.",
+              "title": "Campo"
+            },
+            "description": "Nome do campo alterado, como gravado na lista {campo, de, para}."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaOut_EventoHistoricoOut_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `auditoria:read` no escopo da unidade",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "Unidade inexistente",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Filtro ou paginação mal formados",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
     "/api/v1/dashboard/consultas/unidades-sem-servico": {
       "get": {
         "tags": [
@@ -364,10 +532,251 @@
           }
         }
       }
+    },
+    "/api/v1/auditoria/banco": {
+      "get": {
+        "tags": [
+          "auditoria"
+        ],
+        "summary": "Log do banco: alterações do cadastro registradas pelo PostgreSQL",
+        "description": "011/R7.7: registros do log nos filtros pedidos, do mais recente para o mais antigo,\npaginados.",
+        "operationId": "listar_api_v1_auditoria_banco_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 1,
+              "description": "Página, a partir de 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Página, a partir de 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Itens por página (padrão 20, máximo 100).",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Itens por página (padrão 20, máximo 100)."
+          },
+          {
+            "name": "de",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Início do período, incluído (data e hora com fuso).",
+              "title": "De"
+            },
+            "description": "Início do período, incluído (data e hora com fuso)."
+          },
+          {
+            "name": "ate",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Fim do período, incluído (data e hora com fuso).",
+              "title": "Ate"
+            },
+            "description": "Fim do período, incluído (data e hora com fuso)."
+          },
+          {
+            "name": "tabela",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TabelaDoCadastro"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Tabela do cadastro alterada.",
+              "title": "Tabela"
+            },
+            "description": "Tabela do cadastro alterada."
+          },
+          {
+            "name": "fora_da_api",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Verdadeiro: só alterações feitas fora da API; falso: só as feitas pela API.",
+              "title": "Fora Da Api"
+            },
+            "description": "Verdadeiro: só alterações feitas fora da API; falso: só as feitas pela API."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaOut_AlteracaoBancoOut_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `auditoria:read` em escopo global",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Filtro ou paginação mal formados",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auditoria/banco/particoes": {
+      "get": {
+        "tags": [
+          "auditoria"
+        ],
+        "summary": "Partições do log do banco, com intervalo e registros",
+        "description": "011/R6.9: cada partição com o intervalo (`de` incluído, `ate` excluído; nulos na\nDEFAULT) e a quantidade de registros.",
+        "operationId": "particoes_api_v1_auditoria_banco_particoes_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ParticaoOut"
+                  },
+                  "type": "array",
+                  "title": "Response Particoes Api V1 Auditoria Banco Particoes Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `auditoria:read` em escopo global",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
     "schemas": {
+      "AlteracaoBancoOut": {
+        "properties": {
+          "ocorrido_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ocorrido Em"
+          },
+          "tabela": {
+            "type": "string",
+            "title": "Tabela"
+          },
+          "operacao": {
+            "type": "string",
+            "title": "Operacao"
+          },
+          "linha_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Linha Id"
+          },
+          "colunas_alteradas": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/DeParaOut"
+            },
+            "type": "object",
+            "title": "Colunas Alteradas"
+          },
+          "usuario_banco": {
+            "type": "string",
+            "title": "Usuario Banco"
+          },
+          "via_api": {
+            "type": "boolean",
+            "title": "Via Api"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ocorrido_em",
+          "tabela",
+          "operacao",
+          "linha_id",
+          "colunas_alteradas",
+          "usuario_banco",
+          "via_api"
+        ],
+        "title": "AlteracaoBancoOut",
+        "description": "Um registro do log do banco (011/R7.1, R7.7). `via_api` falso é alteração feita fora da\nAPI, por outro usuário de banco ou por superusuário (011/R7.2)."
+      },
       "ConciliacaoOut": {
         "properties": {
           "unidade_id": {
@@ -455,6 +864,91 @@
         "title": "ConciliacaoOut",
         "description": "Linha da conciliação unidade x equipamento; o lado que faltar vem nulo. `distrito` é o\nnome do distrito da unidade e `equipamento_tipo`, o nome do tipo do equipamento."
       },
+      "DeParaOut": {
+        "properties": {
+          "de": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "para": {
+            "$ref": "#/components/schemas/JsonValue"
+          }
+        },
+        "type": "object",
+        "title": "DeParaOut",
+        "description": "Valor de uma coluna antes (`de`) e depois (`para`) da alteração; nulo do lado que não\nexiste (inclusão ou exclusão). O nome do gestor vem mascarado (`\"***\"`, 011/R7.3)."
+      },
+      "EventoHistoricoOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "ocorrido_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ocorrido Em"
+          },
+          "acao": {
+            "type": "string",
+            "title": "Acao"
+          },
+          "autor_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Autor Id"
+          },
+          "autor_nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Autor Nome"
+          },
+          "autor_papeis": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Autor Papeis"
+          },
+          "mudancas": {
+            "items": {
+              "$ref": "#/components/schemas/MudancaOut"
+            },
+            "type": "array",
+            "title": "Mudancas"
+          },
+          "metadados": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadados"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "ocorrido_em",
+          "acao",
+          "autor_id",
+          "autor_nome",
+          "autor_papeis",
+          "mudancas",
+          "metadados"
+        ],
+        "title": "EventoHistoricoOut",
+        "description": "Um evento da unidade (ou de um equipamento ou serviço dela): data e hora, autor com os\npapéis no momento, ação e a lista {campo, de, para} (008/R1.2, 011/R4.4). Sem autor (tarefa\ndo sistema), `autor_id` e `autor_nome` vêm nulos."
+      },
       "HealthStatus": {
         "properties": {
           "status": {
@@ -469,6 +963,7 @@
         ],
         "title": "HealthStatus"
       },
+      "JsonValue": {},
       "Jwk": {
         "properties": {
           "kty": {
@@ -529,6 +1024,59 @@
         ],
         "title": "Jwks"
       },
+      "MudancaOut": {
+        "properties": {
+          "campo": {
+            "type": "string",
+            "title": "Campo"
+          },
+          "de": {
+            "title": "De"
+          },
+          "para": {
+            "title": "Para"
+          }
+        },
+        "type": "object",
+        "required": [
+          "campo",
+          "de",
+          "para"
+        ],
+        "title": "MudancaOut",
+        "description": "Um campo alterado, com o valor de antes (`de`) e o de depois (`para`)."
+      },
+      "PaginaOut_AlteracaoBancoOut_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/AlteracaoBancoOut"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho"
+        ],
+        "title": "PaginaOut[AlteracaoBancoOut]"
+      },
       "PaginaOut_ConciliacaoOut_": {
         "properties": {
           "itens": {
@@ -559,6 +1107,37 @@
           "tamanho"
         ],
         "title": "PaginaOut[ConciliacaoOut]"
+      },
+      "PaginaOut_EventoHistoricoOut_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/EventoHistoricoOut"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho"
+        ],
+        "title": "PaginaOut[EventoHistoricoOut]"
       },
       "PaginaOut_UnidadeResumoOut_": {
         "properties": {
@@ -591,6 +1170,51 @@
         ],
         "title": "PaginaOut[UnidadeResumoOut]"
       },
+      "ParticaoOut": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "de": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "De"
+          },
+          "ate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ate"
+          },
+          "registros": {
+            "type": "integer",
+            "title": "Registros"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nome",
+          "de",
+          "ate",
+          "registros"
+        ],
+        "title": "ParticaoOut",
+        "description": "Uma partição do log do banco (011/R6.9): nome, intervalo (`de` incluído, `ate` excluído)\ne quantidade de registros. A DEFAULT, que recebe o que não cai em mês nenhum, vem com `de` e\n`ate` nulos."
+      },
       "SituacaoConciliacao": {
         "type": "string",
         "enum": [
@@ -600,6 +1224,14 @@
         ],
         "title": "SituacaoConciliacao",
         "description": "Lado da conciliação unidade x equipamento em que a linha caiu (011/R2.2)."
+      },
+      "TabelaDoCadastro": {
+        "type": "string",
+        "enum": [
+          "health_units",
+          "equipments",
+          "services"
+        ]
       },
       "UnidadeCreate": {
         "properties": {

@@ -20,7 +20,8 @@ from src.modules.access.infrastructure.repository import (
     SqlRepositorioDePermissoes,
     SqlResolvedorDeUnidade,
 )
-from src.modules.audit.api import log_banco
+from src.modules.audit.api import historico, log_banco
+from src.modules.audit.infrastructure.historico import SqlHistoricoDeUnidades
 from src.modules.audit.infrastructure.log_banco import SqlLogDoBanco
 from src.modules.audit.infrastructure.repository import SqlAuditStore
 from src.modules.dashboard.api import rotas as dashboard
@@ -71,6 +72,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.repositorio_de_permissoes = SqlRepositorioDePermissoes
     app.state.auditoria = SqlAuditStore
     app.state.repositorio_de_unidades = SqlRepositorioDeUnidades
+    app.state.historico_de_unidades = SqlHistoricoDeUnidades
     app.state.consultas_dashboard = SqlConsultasDashboard
     app.state.log_do_banco = SqlLogDoBanco
     # Um resolvedor por processo: o cache de permissões é dele (design da 003, passo 3).
@@ -82,6 +84,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(jwks.router)
     app.include_router(unidades.router)
+    app.include_router(historico.router)
     app.include_router(dashboard.router)
     app.include_router(log_banco.router)
 

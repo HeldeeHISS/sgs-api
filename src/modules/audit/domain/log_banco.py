@@ -1,35 +1,30 @@
-"""Log do banco: o que o PostgreSQL registra das alterações do cadastro (spec 011, R7).
+"""Log do banco: o que o PostgreSQL registra das alterações do cadastro (spec 011, R6.9 e R7).
 
 O log é gravado pelo trigger `trg_registry_change_log` (011/T7), venha a alteração de onde vier,
 e só é lido pela aplicação. Aqui ficam os valores que entram e saem da porta `LogDoBanco`, sem
-banco nem HTTP.
+banco nem HTTP. A página pedida e o resultado paginado são os do histórico da unidade.
 """
 
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
-
-@dataclass(frozen=True, slots=True)
-class Pagina:
-    """Página pedida: número (a partir de 1) e quantidade de itens por página."""
-
-    numero: int
-    tamanho: int
-
-    @property
-    def offset(self) -> int:
-        return (self.numero - 1) * self.tamanho
+type TabelaDoCadastro = Literal["health_units", "equipments", "services"]
+"""As tabelas do cadastro que o log registra (CHECK de `db_change_log.table_name`)."""
 
 
 @dataclass(frozen=True, slots=True)
-class Resultado[T]:
-    """Os itens de uma página e o total de itens da consulta inteira."""
+class FiltrosDoLog:
+    """Filtros opcionais do log (011/R7.7), que se somam: período com as duas pontas incluídas
+    (`de`, `ate`, com fuso), tabela do cadastro e origem (`fora_da_api` verdadeiro traz só o que
+    não veio da API; falso, só o que veio; nulo, tudo)."""
 
-    itens: tuple[T, ...]
-    total: int
+    de: datetime | None = None
+    ate: datetime | None = None
+    tabela: TabelaDoCadastro | None = None
+    fora_da_api: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,3 +39,14 @@ class AlteracaoBanco:
     colunas_alteradas: Mapping[str, Any]
     usuario_banco: str
     via_api: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ParticaoDoLog:
+    """Uma partição do log: nome, intervalo (`de` incluído, `ate` excluído; nulos na DEFAULT) e
+    quantidade de registros (011/R6.9)."""
+
+    nome: str
+    de: datetime | None
+    ate: datetime | None
+    registros: int
