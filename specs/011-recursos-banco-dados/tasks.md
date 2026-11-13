@@ -98,7 +98,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
   - Requisitos: R4.5
   - Pronto quando: `tests/integration/audit/test_historico_unidade.py` passa (eventos da unidade, de seus equipamentos e serviços, com autor; 403 fora do escopo)
 
-- [ ] T15. Log do banco e partições na API
+- [x] T15. Log do banco e partições na API
   - `db_change_log_list.sql`, `db_change_log_partitions.sql`, rotas `GET /auditoria/banco` e `/auditoria/banco/particoes`.
   - Bloqueada por: T8, 003/T4
   - Requisitos: R6.9, R7.7, R7.8
