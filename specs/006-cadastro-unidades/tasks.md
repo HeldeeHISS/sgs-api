@@ -38,7 +38,7 @@
   - Bloqueada por: T7
   - Requisitos: R6.1–R6.4
   - Pronto quando: `tests/integration/registry/test_servicos.py` passa
-- [ ] T9. Rotas de referência
+- [x] T9. Rotas de referência
   - Bloqueada por: T1, 003/T4
   - Código editável com cascata e auditoria; no mesmo PR da 011/T18.
   - Requisitos: R7.1, R7.2, R7.3

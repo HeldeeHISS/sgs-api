@@ -208,6 +208,886 @@
         }
       }
     },
+    "/api/v1/referencias/distritos": {
+      "get": {
+        "tags": [
+          "referências"
+        ],
+        "summary": "Listar distritos sanitários",
+        "description": "006/R7.1: ativos e desativados (`ativo`), na ordem da semeadura.",
+        "operationId": "listar_api_v1_referencias_distritos_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReferenciaOut"
+                  },
+                  "type": "array",
+                  "title": "Response Listar Api V1 Referencias Distritos Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "referências"
+        ],
+        "summary": "Incluir item em distritos sanitários",
+        "description": "006/R7.2. Audita `referencia.criada`.",
+        "operationId": "criar_api_v1_referencias_distritos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DistritoCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenciaOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `regra_validacao:manage`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "409": {
+            "description": "Já existe item com este código",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, ou área técnica inexistente ou desativada",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/referencias/distritos/{id}": {
+      "patch": {
+        "tags": [
+          "referências"
+        ],
+        "summary": "Alterar ou desativar item de distritos sanitários",
+        "description": "006/R7.2, R7.3; 011/R9.2. Audita `referencia.atualizada` com o de/para (e, no código\nde um tipo de equipamento, `equipamentos_afetados`); nada mudou, nada é auditado.",
+        "operationId": "alterar_api_v1_referencias_distritos__id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 32767,
+              "minimum": 1,
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DistritoUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenciaOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `regra_validacao:manage`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "O item não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "409": {
+            "description": "Já existe item com este código",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, ou área técnica inexistente ou desativada",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/referencias/areas-tecnicas": {
+      "get": {
+        "tags": [
+          "referências"
+        ],
+        "summary": "Listar áreas técnicas",
+        "description": "006/R7.1: ativos e desativados (`ativo`), na ordem da semeadura.",
+        "operationId": "listar_api_v1_referencias_areas_tecnicas_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReferenciaOut"
+                  },
+                  "type": "array",
+                  "title": "Response Listar Api V1 Referencias Areas Tecnicas Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "referências"
+        ],
+        "summary": "Incluir item em áreas técnicas",
+        "description": "006/R7.2. Audita `referencia.criada`.",
+        "operationId": "criar_api_v1_referencias_areas_tecnicas_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferenciaCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenciaOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `regra_validacao:manage`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "409": {
+            "description": "Já existe item com este código",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, ou área técnica inexistente ou desativada",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/referencias/areas-tecnicas/{id}": {
+      "patch": {
+        "tags": [
+          "referências"
+        ],
+        "summary": "Alterar ou desativar item de áreas técnicas",
+        "description": "006/R7.2, R7.3; 011/R9.2. Audita `referencia.atualizada` com o de/para (e, no código\nde um tipo de equipamento, `equipamentos_afetados`); nada mudou, nada é auditado.",
+        "operationId": "alterar_api_v1_referencias_areas_tecnicas__id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 32767,
+              "minimum": 1,
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferenciaUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenciaOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `regra_validacao:manage`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "O item não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "409": {
+            "description": "Já existe item com este código",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, ou área técnica inexistente ou desativada",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/referencias/tipos-unidade": {
+      "get": {
+        "tags": [
+          "referências"
+        ],
+        "summary": "Listar tipos de unidade",
+        "description": "006/R7.1: ativos e desativados (`ativo`), na ordem da semeadura.",
+        "operationId": "listar_api_v1_referencias_tipos_unidade_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TipoUnidadeOut"
+                  },
+                  "type": "array",
+                  "title": "Response Listar Api V1 Referencias Tipos Unidade Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "referências"
+        ],
+        "summary": "Incluir item em tipos de unidade",
+        "description": "006/R7.2. Audita `referencia.criada`.",
+        "operationId": "criar_api_v1_referencias_tipos_unidade_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TipoUnidadeCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipoUnidadeOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `regra_validacao:manage`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "409": {
+            "description": "Já existe item com este código",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, ou área técnica inexistente ou desativada",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/referencias/tipos-unidade/{id}": {
+      "patch": {
+        "tags": [
+          "referências"
+        ],
+        "summary": "Alterar ou desativar item de tipos de unidade",
+        "description": "006/R7.2, R7.3; 011/R9.2. Audita `referencia.atualizada` com o de/para (e, no código\nde um tipo de equipamento, `equipamentos_afetados`); nada mudou, nada é auditado.",
+        "operationId": "alterar_api_v1_referencias_tipos_unidade__id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 32767,
+              "minimum": 1,
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TipoUnidadeUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipoUnidadeOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `regra_validacao:manage`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "O item não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "409": {
+            "description": "Já existe item com este código",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, ou área técnica inexistente ou desativada",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/referencias/tipos-equipamento": {
+      "get": {
+        "tags": [
+          "referências"
+        ],
+        "summary": "Listar tipos de equipamento",
+        "description": "006/R7.1: ativos e desativados (`ativo`), na ordem da semeadura.",
+        "operationId": "listar_api_v1_referencias_tipos_equipamento_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReferenciaOut"
+                  },
+                  "type": "array",
+                  "title": "Response Listar Api V1 Referencias Tipos Equipamento Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "referências"
+        ],
+        "summary": "Incluir item em tipos de equipamento",
+        "description": "006/R7.2. Audita `referencia.criada`.",
+        "operationId": "criar_api_v1_referencias_tipos_equipamento_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferenciaCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenciaOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `regra_validacao:manage`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "409": {
+            "description": "Já existe item com este código",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, ou área técnica inexistente ou desativada",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/referencias/tipos-equipamento/{id}": {
+      "patch": {
+        "tags": [
+          "referências"
+        ],
+        "summary": "Alterar ou desativar item de tipos de equipamento",
+        "description": "006/R7.2, R7.3; 011/R9.2. Audita `referencia.atualizada` com o de/para (e, no código\nde um tipo de equipamento, `equipamentos_afetados`); nada mudou, nada é auditado.",
+        "operationId": "alterar_api_v1_referencias_tipos_equipamento__id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 32767,
+              "minimum": 1,
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferenciaUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenciaOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `regra_validacao:manage`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "O item não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "409": {
+            "description": "Já existe item com este código",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, ou área técnica inexistente ou desativada",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/referencias/tipos-servico": {
+      "get": {
+        "tags": [
+          "referências"
+        ],
+        "summary": "Listar tipos de serviço",
+        "description": "006/R7.1: ativos e desativados (`ativo`), na ordem da semeadura.",
+        "operationId": "listar_api_v1_referencias_tipos_servico_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReferenciaOut"
+                  },
+                  "type": "array",
+                  "title": "Response Listar Api V1 Referencias Tipos Servico Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "referências"
+        ],
+        "summary": "Incluir item em tipos de serviço",
+        "description": "006/R7.2. Audita `referencia.criada`.",
+        "operationId": "criar_api_v1_referencias_tipos_servico_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferenciaCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenciaOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `regra_validacao:manage`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "409": {
+            "description": "Já existe item com este código",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, ou área técnica inexistente ou desativada",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/referencias/tipos-servico/{id}": {
+      "patch": {
+        "tags": [
+          "referências"
+        ],
+        "summary": "Alterar ou desativar item de tipos de serviço",
+        "description": "006/R7.2, R7.3; 011/R9.2. Audita `referencia.atualizada` com o de/para (e, no código\nde um tipo de equipamento, `equipamentos_afetados`); nada mudou, nada é auditado.",
+        "operationId": "alterar_api_v1_referencias_tipos_servico__id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 32767,
+              "minimum": 1,
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferenciaUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenciaOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `regra_validacao:manage`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "O item não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "409": {
+            "description": "Já existe item com este código",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, ou área técnica inexistente ou desativada",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
     "/api/v1/unidades/{id}/historico": {
       "get": {
         "tags": [
@@ -1166,6 +2046,73 @@
         "title": "DistritoCnesOut",
         "description": "Distrito acima da rede em unidades sem CNES; `percentual` de 0 a 100, duas casas."
       },
+      "DistritoCreate": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Codigo"
+          },
+          "nome": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Nome"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "codigo",
+          "nome"
+        ],
+        "title": "DistritoCreate"
+      },
+      "DistritoUpdate": {
+        "properties": {
+          "codigo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codigo"
+          },
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome"
+          },
+          "ativo": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ativo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DistritoUpdate"
+      },
       "DistritosCnesOut": {
         "properties": {
           "percentual_rede": {
@@ -1564,6 +2511,103 @@
         "title": "ParticaoOut",
         "description": "Uma partição do log do banco (011/R6.9): nome, intervalo (`de` incluído, `ate` excluído)\ne quantidade de registros. A DEFAULT, que recebe o que não cai em mês nenhum, vem com `de` e\n`ate` nulos."
       },
+      "ReferenciaCreate": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Codigo"
+          },
+          "nome": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Nome"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "codigo",
+          "nome"
+        ],
+        "title": "ReferenciaCreate",
+        "description": "Item novo; nasce ativo."
+      },
+      "ReferenciaOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "ativo": {
+            "type": "boolean",
+            "title": "Ativo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "codigo",
+          "nome",
+          "ativo"
+        ],
+        "title": "ReferenciaOut"
+      },
+      "ReferenciaUpdate": {
+        "properties": {
+          "codigo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codigo"
+          },
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome"
+          },
+          "ativo": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ativo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReferenciaUpdate",
+        "description": "Só os campos enviados mudam; `ativo: false` desativa, `true` reativa. Nulo explícito é\nrecusado: os campos não são opcionais no banco."
+      },
       "SituacaoConciliacao": {
         "type": "string",
         "enum": [
@@ -1581,6 +2625,127 @@
           "equipments",
           "services"
         ]
+      },
+      "TipoUnidadeCreate": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Codigo"
+          },
+          "nome": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Nome"
+          },
+          "area_tecnica_id": {
+            "type": "integer",
+            "maximum": 32767.0,
+            "minimum": 1.0,
+            "title": "Area Tecnica Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "codigo",
+          "nome",
+          "area_tecnica_id"
+        ],
+        "title": "TipoUnidadeCreate",
+        "description": "O tipo de unidade aponta a área técnica, escopo do Coordenador Técnico (003)."
+      },
+      "TipoUnidadeOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "ativo": {
+            "type": "boolean",
+            "title": "Ativo"
+          },
+          "area_tecnica_id": {
+            "type": "integer",
+            "title": "Area Tecnica Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "codigo",
+          "nome",
+          "ativo",
+          "area_tecnica_id"
+        ],
+        "title": "TipoUnidadeOut"
+      },
+      "TipoUnidadeUpdate": {
+        "properties": {
+          "codigo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codigo"
+          },
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome"
+          },
+          "ativo": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ativo"
+          },
+          "area_tecnica_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 32767.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area Tecnica Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "TipoUnidadeUpdate"
       },
       "UnidadeCreate": {
         "properties": {

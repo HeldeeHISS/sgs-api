@@ -116,7 +116,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
   - Requisitos: R8.3
   - Pronto quando: `tests/integration/registry/test_versao_fora_da_api.py` passa (UPDATE pelo superusuário, depois `PATCH` com o ETag antigo → 412)
 
-- [ ] T18. Correção de código de tipo de equipamento (com 006/T9)
+- [x] T18. Correção de código de tipo de equipamento (com 006/T9)
   - `PATCH /referencias/tipos-equipamento/{id}` com `codigo`, cascata pela FK e auditoria com a quantidade de equipamentos.
   - Bloqueada por: T2, 003/T4
   - Requisitos: R9.2
