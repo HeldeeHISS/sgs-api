@@ -135,6 +135,115 @@
         ]
       }
     },
+    "/api/v1/unidades/{id}": {
+      "patch": {
+        "tags": [
+          "unidades"
+        ],
+        "summary": "Atualizar unidade de saúde",
+        "description": "006/R3, 011/R8.3. Aplica só os campos enviados e responde com a unidade e o `ETag` da\nversão nova, que o banco incrementa. Sem mudança, responde igual, sem alterar nem auditar.",
+        "operationId": "atualizar_api_v1_unidades__id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A versão em mãos, como veio no `ETag` (ex.: `\"3\"`). Sem ele, 428.",
+              "title": "If-Match"
+            },
+            "description": "A versão em mãos, como veio no `ETag` (ex.: `\"3\"`). Sem ele, 428."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnidadeUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnidadeOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `unidade:update` no escopo da unidade, ou alteração de distrito, tipo ou CNES sem escopo global ou na área técnica (os campos vêm em `campos`)",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "A unidade não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "409": {
+            "description": "Já existe unidade com o mesmo CNES ou o mesmo nome no distrito",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "412": {
+            "description": "A unidade mudou depois da versão informada em `If-Match`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, ou tipo de unidade ou distrito inexistente",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "428": {
+            "description": "Falta o cabeçalho `If-Match`",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
     "/api/v1/unidades/{id}/desativar": {
       "post": {
         "tags": [
@@ -1668,6 +1777,121 @@
         }
       }
     },
+    "/api/v1/dashboard/consultas/inventario": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Inventário da rede (view vw_unit_inventory)",
+        "description": "011/R4.1 a R4.3: uma linha por unidade, com situação cadastral e contagens, a partir da view\nde inventário, no escopo de leitura do usuário. Sem dado pessoal.",
+        "operationId": "inventario_api_v1_dashboard_consultas_inventario_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "distrito",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id do distrito sanitário.",
+              "title": "Distrito"
+            },
+            "description": "Id do distrito sanitário."
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 32767,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Id do tipo de unidade.",
+              "title": "Tipo"
+            },
+            "description": "Id do tipo de unidade."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 1,
+              "description": "Página, a partir de 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Página, a partir de 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Itens por página (padrão 20, máximo 100).",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Itens por página (padrão 20, máximo 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaOut_InventarioOut_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `dashboard:read`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Filtro mal formado, ou distrito ou tipo inexistente",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auditoria/banco": {
       "get": {
         "tags": [
@@ -2228,6 +2452,92 @@
         ],
         "title": "HealthStatus"
       },
+      "InventarioOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "cnes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnes"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "situacao_cadastral": {
+            "$ref": "#/components/schemas/SituacaoCadastral"
+          },
+          "tipo_id": {
+            "type": "integer",
+            "title": "Tipo Id"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "area_tecnica_id": {
+            "type": "integer",
+            "title": "Area Tecnica Id"
+          },
+          "area_tecnica": {
+            "type": "string",
+            "title": "Area Tecnica"
+          },
+          "distrito_id": {
+            "type": "integer",
+            "title": "Distrito Id"
+          },
+          "distrito": {
+            "type": "string",
+            "title": "Distrito"
+          },
+          "equipamentos": {
+            "type": "integer",
+            "title": "Equipamentos"
+          },
+          "servicos": {
+            "type": "integer",
+            "title": "Servicos"
+          },
+          "servicos_fora_cnes": {
+            "type": "integer",
+            "title": "Servicos Fora Cnes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "cnes",
+          "status",
+          "situacao_cadastral",
+          "tipo_id",
+          "tipo",
+          "area_tecnica_id",
+          "area_tecnica",
+          "distrito_id",
+          "distrito",
+          "equipamentos",
+          "servicos",
+          "servicos_fora_cnes"
+        ],
+        "title": "InventarioOut",
+        "description": "Unidade no inventário da rede (011/R4.1): as colunas da `vw_unit_inventory`, sem dado\npessoal (011/R4.2). Tipo, área técnica e distrito vêm com o id (o mesmo dos filtros) e o nome;\nas quantidades contam equipamentos e serviços da unidade em qualquer status."
+      },
       "JsonValue": {},
       "Jwk": {
         "properties": {
@@ -2403,6 +2713,37 @@
           "tamanho"
         ],
         "title": "PaginaOut[EventoHistoricoOut]"
+      },
+      "PaginaOut_InventarioOut_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/InventarioOut"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho"
+        ],
+        "title": "PaginaOut[InventarioOut]"
       },
       "PaginaOut_UnidadeForaCnesOut_": {
         "properties": {
@@ -2607,6 +2948,17 @@
         "type": "object",
         "title": "ReferenciaUpdate",
         "description": "Só os campos enviados mudam; `ativo: false` desativa, `true` reativa. Nulo explícito é\nrecusado: os campos não são opcionais no banco."
+      },
+      "SituacaoCadastral": {
+        "type": "string",
+        "enum": [
+          "inativa",
+          "com_pendencias",
+          "sem_cnes",
+          "regular"
+        ],
+        "title": "SituacaoCadastral",
+        "description": "Situação cadastral da unidade, por `fn_registration_status` (011/R5.3)."
       },
       "SituacaoConciliacao": {
         "type": "string",
@@ -3157,6 +3509,182 @@
         ],
         "title": "UnidadeResumoOut",
         "description": "Unidade numa consulta de qualidade; `tipo` e `distrito` são os nomes, para leitura."
+      },
+      "UnidadeUpdate": {
+        "properties": {
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome"
+          },
+          "cnes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9]{7}$",
+                "description": "Sete dígitos."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnes"
+          },
+          "tipo_unidade_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 32767.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo Unidade Id"
+          },
+          "distrito_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 32767.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distrito Id"
+          },
+          "cep": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[0-9]{5}-?[0-9]{3}$",
+                "description": "Oito dígitos, com ou sem hífen."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cep"
+          },
+          "endereco": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endereco"
+          },
+          "bairro": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bairro"
+          },
+          "telefone": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20,
+                "minLength": 1,
+                "pattern": "^[0-9()+\\- ]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefone"
+          },
+          "nome_gestor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 150,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome Gestor"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,10}0*$)\\d{0,3}\\.\\d{0,6}0*$)"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ativa",
+                  "inativa",
+                  "em_implantacao"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "UnidadeUpdate",
+        "description": "Alteração parcial da unidade (006/R3.1): só os campos enviados mudam. Mesmo formato do\n`UnidadeCreate`; um campo opcional enviado nulo é apagado (CNES nulo deixa a unidade\npendente, R1.5), e um obrigatório não pode vir nulo. Corpo vazio não muda nada (R3.6)."
       }
     },
     "securitySchemes": {

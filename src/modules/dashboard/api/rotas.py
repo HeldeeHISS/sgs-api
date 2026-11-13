@@ -15,6 +15,7 @@ from src.modules.access.api.deps import UsuarioAtual, require
 from src.modules.dashboard.api.schemas import (
     ConciliacaoOut,
     DistritosCnesOut,
+    InventarioOut,
     UnidadeForaCnesOut,
     UnidadeResumoOut,
 )
@@ -140,6 +141,21 @@ async def unidades_servico_fora_cnes(
         )
     return PaginaOut(
         itens=[UnidadeForaCnesOut.de(item) for item in resultado.itens],
+        total=resultado.total,
+        pagina=pedido.pagina.numero,
+        tamanho=pedido.pagina.tamanho,
+    )
+
+
+@router.get("/inventario", summary="Inventário da rede (view vw_unit_inventory)")
+async def inventario(request: Request, usuario: Leitor, pedido: Pedido) -> PaginaOut[InventarioOut]:
+    """011/R4.1 a R4.3: uma linha por unidade, com situação cadastral e contagens, a partir da view
+    de inventário, no escopo de leitura do usuário. Sem dado pessoal."""
+    async with request.app.state.sessoes() as sessao:
+        porta: ConsultasDashboard = request.app.state.consultas_dashboard(sessao)
+        resultado = await consultas.inventario(porta, usuario, pedido.filtros, pedido.pagina)
+    return PaginaOut(
+        itens=[InventarioOut.model_validate(item) for item in resultado.itens],
         total=resultado.total,
         pagina=pedido.pagina.numero,
         tamanho=pedido.pagina.tamanho,

@@ -7,7 +7,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from src.modules.dashboard.application.consultas import SituacaoConciliacao, UnidadeForaCnes
+from src.modules.dashboard.application.consultas import (
+    SituacaoCadastral,
+    SituacaoConciliacao,
+    UnidadeForaCnes,
+)
 
 
 class UnidadeResumoOut(BaseModel):
@@ -68,3 +72,26 @@ class DistritosCnesOut(BaseModel):
 
     percentual_rede: float | None
     distritos: list[DistritoCnesOut]
+
+
+class InventarioOut(BaseModel):
+    """Unidade no inventário da rede (011/R4.1): as colunas da `vw_unit_inventory`, sem dado
+    pessoal (011/R4.2). Tipo, área técnica e distrito vêm com o id (o mesmo dos filtros) e o nome;
+    as quantidades contam equipamentos e serviços da unidade em qualquer status."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    nome: str
+    cnes: str | None
+    status: str
+    situacao_cadastral: SituacaoCadastral
+    tipo_id: int
+    tipo: str
+    area_tecnica_id: int
+    area_tecnica: str
+    distrito_id: int
+    distrito: str
+    equipamentos: int
+    servicos: int
+    servicos_fora_cnes: int

@@ -60,7 +60,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
   - Requisitos: R6.5, R6.6, R6.7, R6.8, R10.1
   - Pronto quando: `tests/integration/audit/test_particoes.py` (cria os meses faltantes; não apaga nada; DEFAULT com linha de um mês → aviso e mês pulado; a migração deixa 12 meses à frente; login da API não executa o procedimento) e `tests/integration/tools/test_sgs_admin_particoes.py` passam
 
-- [ ] T9. Prova de uso dos índices com volume
+- [x] T9. Prova de uso dos índices com volume
   - Fixture de volume (1.000 unidades, ~3.000 serviços, trilha pelo `audit.registrar`) e `EXPLAIN` registrado no cabeçalho dos `.sql` dos índices.
   - Bloqueada por: T3
   - Requisitos: R1.3, R1.4
@@ -86,7 +86,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
   - Requisitos: R2.3, R2.4, R2.5, R2.7, R2.8, R2.9
   - Pronto quando: `tests/integration/dashboard/test_consultas_qualidade.py::test_distritos_cnes*` e `::test_fora_cnes*` passam (com escopo distrital, a rede é só o distrito)
 
-- [ ] T13. Inventário
+- [x] T13. Inventário
   - `unit_inventory.sql` sobre a view, rota e schema.
   - Bloqueada por: T4, T11
   - Requisitos: R4.3
@@ -110,7 +110,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
   - Requisitos: R6.2, R6.3, R6.4
   - Pronto quando: `tests/integration/registry/test_desativar.py` passa (200 com `unidade.desativada` e motivo; 404 sem mensagem do banco; já inativa → 200 sem auditoria)
 
-- [ ] T17. Versão invalidada por alteração fora da API (com 006/T5)
+- [x] T17. Versão invalidada por alteração fora da API (com 006/T5)
   - Caso de uso da 006 sem incrementar `version`, com `WHERE version = :esperada RETURNING version`.
   - Bloqueada por: T5, 006/T3
   - Requisitos: R8.3

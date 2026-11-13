@@ -66,6 +66,23 @@ class RepositorioDeUnidades(Protocol):
         houver."""
         ...
 
+    async def ler(self, id_: UUID) -> Unidade | None:
+        """A unidade como está no banco; `None` se ela não existe."""
+        ...
+
+    async def area_da_unidade(self, id_: UUID) -> int | None:
+        """Área técnica da unidade, a do tipo dela (mesmo desativado); `None` se ela não existe."""
+        ...
+
+    async def atualizar(
+        self, id_: UUID, versao_esperada: int, dados: DadosDaUnidade
+    ) -> Unidade | None:
+        """Grava os dados na unidade só se ela ainda está na `versao_esperada` e a devolve como
+        ficou, com a versão nova que o trigger da 011 deu (R8); a aplicação nunca a incrementa.
+        `None`, sem gravar, se a versão mudou (006/R3.2, 011/R8.3). Levanta `UnidadeRepetidaError`,
+        sem gravar nem abortar a transação, se os dados repetem outra unidade (006/R1.3, R1.4)."""
+        ...
+
     async def desativar(self, id_: UUID) -> Desativacao | None:
         """Desativa a unidade pelo procedimento do banco, `sp_deactivate_unit` (011/R6.1), e a
         devolve como ficou, com o status que tinha. Já inativa, nada muda (011/R6.4). `None` se
