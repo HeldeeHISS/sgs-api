@@ -80,7 +80,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
   - Requisitos: R2.1, R2.2, R2.5, R2.6, R2.7, R2.8, R2.9
   - Pronto quando: `tests/integration/dashboard/test_consultas_qualidade.py::test_unidades_sem_servico*` e `::test_conciliacao*` passam (resultado igual ao semeado; escopo distrital reduz; equipamento sem unidade só com escopo global; 403; 422 com distrito inexistente)
 
-- [ ] T12. Consultas com subconsulta
+- [x] T12. Consultas com subconsulta
   - `districts_cnes_above_network.sql` (escalar no `HAVING`, "rede" no escopo) e `units_with_services_outside_cnes.sql` (`EXISTS`), rotas e schemas.
   - Bloqueada por: T11
   - Requisitos: R2.3, R2.4, R2.5, R2.7, R2.8, R2.9

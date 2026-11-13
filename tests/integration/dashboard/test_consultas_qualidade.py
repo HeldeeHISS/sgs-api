@@ -500,3 +500,342 @@ async def test_conciliacao_com_filtro_mal_formado_responde_422(
 ) -> None:
     """011/R2.9: formato inválido vem do schema da rota."""
     await _filtro_mal_formado_responde_422(app, cliente, sessoes, CONCILIACAO, params, campo)
+
+
+DISTRITOS_CNES = "/api/v1/dashboard/consultas/distritos-cnes-acima-da-media"
+
+
+async def _semear_cnes_por_distrito(dono: AsyncConnection) -> None:
+    """DS-I: 3 de 4 sem CNES (75%); DS-II: 0 de 2 (0%); DS-III: 2 de 2 (100%). Rede: 5 de 8
+    (62,5%)."""
+    await inserir_unidade(dono, "CAPS A", distrito="DS-I")
+    await inserir_unidade(dono, "CAPS B", distrito="DS-I")
+    await inserir_unidade(dono, "CAPS C", distrito="DS-I")
+    await inserir_unidade(dono, "CAPS D", distrito="DS-I", cnes="0000001")
+    await inserir_unidade(dono, "CAPS E", distrito="DS-II", cnes="0000002")
+    await inserir_unidade(dono, "CAPS F", distrito="DS-II", cnes="0000003")
+    await inserir_unidade(dono, "CAPS G", distrito="DS-III")
+    await inserir_unidade(dono, "CAPS H", distrito="DS-III")
+
+
+def _distrito(id_: int, nome: str, total: int, sem_cnes: int, percentual: float) -> dict[str, Any]:
+    return {
+        "id": id_,
+        "nome": nome,
+        "total_unidades": total,
+        "sem_cnes": sem_cnes,
+        "percentual": percentual,
+    }
+
+
+async def test_distritos_cnes_lista_os_distritos_acima_do_percentual_da_rede(
+    app: FastAPI,
+    cliente: httpx.AsyncClient,
+    sessoes: Sessoes,
+    dono: AsyncConnection,
+) -> None:
+    """011/R2.3: subconsulta escalar no HAVING; só os distritos com percentual de unidades sem
+    CNES maior que o da rede, do maior para o menor percentual."""
+    await _semear_cnes_por_distrito(dono)
+    ds1 = await id_pelo_codigo(sessoes, "distrito", "DS-I")
+    ds3 = await id_pelo_codigo(sessoes, "distrito", "DS-III")
+    await dono.commit()
+    gestor = await logado(sessoes, ("GESTOR_DADOS", GLOBAL))
+
+    resposta = await cliente.get(DISTRITOS_CNES, headers=bearer(app, gestor))
+
+    assert resposta.status_code == 200
+    assert resposta.json() == {
+        "percentual_rede": 62.5,
+        "distritos": [
+            _distrito(ds3, "Distrito Sanitário III", 2, 2, 100.0),
+            _distrito(ds1, "Distrito Sanitário I", 4, 3, 75.0),
+        ],
+    }
+
+
+async def test_distritos_cnes_com_escopo_distrital_a_rede_e_so_o_escopo(
+    app: FastAPI,
+    cliente: httpx.AsyncClient,
+    sessoes: Sessoes,
+    dono: AsyncConnection,
+) -> None:
+    """011/R2.3, R2.5: com escopo em DS-I e DS-II, a rede são as 6 unidades deles (3 sem CNES,
+    50%), não as 8 da rede inteira (62,5%); DS-III, fora do escopo, não aparece."""
+    await _semear_cnes_por_distrito(dono)
+    await _criar_painel_distrital(dono)
+    ds1 = await id_pelo_codigo(sessoes, "distrito", "DS-I")
+    ds2 = await id_pelo_codigo(sessoes, "distrito", "DS-II")
+    await dono.commit()
+    tecnico = await logado(
+        sessoes,
+        (PAINEL_DISTRITAL, ("distrito", str(ds1))),
+        (PAINEL_DISTRITAL, ("distrito", str(ds2))),
+    )
+
+    resposta = await cliente.get(DISTRITOS_CNES, headers=bearer(app, tecnico))
+
+    assert resposta.status_code == 200
+    assert resposta.json() == {
+        "percentual_rede": 50.0,
+        "distritos": [_distrito(ds1, "Distrito Sanitário I", 4, 3, 75.0)],
+    }
+
+
+async def test_distritos_cnes_com_escopo_de_um_distrito_nao_lista_nenhum(
+    app: FastAPI,
+    cliente: httpx.AsyncClient,
+    sessoes: Sessoes,
+    dono: AsyncConnection,
+) -> None:
+    """011/R2.5: com um distrito só, a rede é o próprio distrito, que não fica acima de si
+    mesmo; na rede inteira, DS-I (75%) estaria acima de 62,5%."""
+    await _semear_cnes_por_distrito(dono)
+    await _criar_painel_distrital(dono)
+    ds1 = await id_pelo_codigo(sessoes, "distrito", "DS-I")
+    await dono.commit()
+    tecnico = await logado(sessoes, (PAINEL_DISTRITAL, ("distrito", str(ds1))))
+
+    resposta = await cliente.get(DISTRITOS_CNES, headers=bearer(app, tecnico))
+
+    assert resposta.status_code == 200
+    assert resposta.json() == {"percentual_rede": 75.0, "distritos": []}
+
+
+async def test_distritos_cnes_sem_unidades_no_escopo_nao_tem_percentual_da_rede(
+    app: FastAPI, cliente: httpx.AsyncClient, sessoes: Sessoes
+) -> None:
+    """011/R2.3: sem unidade nenhuma, não há percentual da rede a comparar."""
+    gestor = await logado(sessoes, ("GESTOR_DADOS", GLOBAL))
+
+    resposta = await cliente.get(DISTRITOS_CNES, headers=bearer(app, gestor))
+
+    assert resposta.status_code == 200
+    assert resposta.json() == {"percentual_rede": None, "distritos": []}
+
+
+async def test_distritos_cnes_filtra_por_tipo_na_rede_e_nos_distritos(
+    app: FastAPI,
+    cliente: httpx.AsyncClient,
+    sessoes: Sessoes,
+    dono: AsyncConnection,
+) -> None:
+    """011/R2.7: o filtro de tipo vale para os distritos e para a rede. Só USF: DS-I 0 de 1,
+    DS-II 1 de 2, DS-III 1 de 1; rede 2 de 4 (50%). Os CAPS sem CNES não contam."""
+    await _semear_cnes_por_distrito(dono)
+    await inserir_unidade(dono, "USF Coque", distrito="DS-I", tipo="USF", cnes="0000004")
+    await inserir_unidade(dono, "USF Iputinga", distrito="DS-II", tipo="USF")
+    await inserir_unidade(dono, "USF Caxangá", distrito="DS-II", tipo="USF", cnes="0000005")
+    await inserir_unidade(dono, "USF Ibura", distrito="DS-III", tipo="USF")
+    ds3 = await id_pelo_codigo(sessoes, "distrito", "DS-III")
+    usf = await id_pelo_codigo(sessoes, "tipo_unidade", "USF")
+    await dono.commit()
+    gestor = await logado(sessoes, ("GESTOR_DADOS", GLOBAL))
+
+    resposta = await cliente.get(DISTRITOS_CNES, params={"tipo": usf}, headers=bearer(app, gestor))
+
+    assert resposta.status_code == 200
+    assert resposta.json() == {
+        "percentual_rede": 50.0,
+        "distritos": [_distrito(ds3, "Distrito Sanitário III", 1, 1, 100.0)],
+    }
+
+
+async def test_distritos_cnes_sem_token_responde_401(cliente: httpx.AsyncClient) -> None:
+    """011/R2.8; 003/R4.1: rota protegida."""
+    await _sem_token_responde_401(cliente, DISTRITOS_CNES)
+
+
+async def test_distritos_cnes_sem_dashboard_read_responde_403(
+    app: FastAPI, cliente: httpx.AsyncClient, sessoes: Sessoes
+) -> None:
+    """011/R2.8"""
+    await _sem_dashboard_read_responde_403(app, cliente, sessoes, DISTRITOS_CNES)
+
+
+async def test_distritos_cnes_com_tipo_inexistente_responde_422(
+    app: FastAPI, cliente: httpx.AsyncClient, sessoes: Sessoes
+) -> None:
+    """011/R2.9: tipo que não existe nas referências. A consulta não tem filtro de distrito
+    (design § Rotas: só `tipo?`)."""
+    gestor = await logado(sessoes, ("GESTOR_DADOS", GLOBAL))
+
+    resposta = await cliente.get(
+        DISTRITOS_CNES, params={"tipo": INEXISTENTE}, headers=bearer(app, gestor)
+    )
+
+    assert resposta.status_code == 422
+    assert resposta.headers["content-type"] == "application/problem+json"
+    assert resposta.json()["errors"] == [
+        {"campo": "tipo", "mensagem": "Tipo de unidade inexistente."}
+    ]
+
+
+@pytest.mark.parametrize("valor", ["USF", "0", "40000"])
+async def test_distritos_cnes_com_tipo_mal_formado_responde_422(
+    app: FastAPI, cliente: httpx.AsyncClient, sessoes: Sessoes, valor: str
+) -> None:
+    """011/R2.9: formato inválido vem do schema da rota."""
+    await _filtro_mal_formado_responde_422(
+        app, cliente, sessoes, DISTRITOS_CNES, {"tipo": valor}, "tipo"
+    )
+
+
+FORA_CNES = "/api/v1/dashboard/consultas/unidades-servico-fora-cnes"
+
+
+async def _semear_servicos_fora_cnes(dono: AsyncConnection) -> dict[str, UUID]:
+    """CAPS A (DS-I): 1 serviço fora e 1 no CNES; CAPS B (DS-I): 2 fora; CAPS C (DS-I): só no
+    CNES; USF Ibura (DS-III): 1 fora; CAPS D (DS-III): sem serviço; e um serviço solto fora do
+    CNES."""
+    caps_a = await inserir_unidade(dono, "CAPS A", distrito="DS-I", cnes="0000001")
+    await inserir_servico(dono, caps_a, nome="Farmácia do CAPS A")
+    await inserir_servico(
+        dono, caps_a, nome="Espaço Mãe Coruja", tipo="ESPACO_MAE_CORUJA", no_cnes=True
+    )
+    caps_b = await inserir_unidade(dono, "CAPS B", distrito="DS-I")
+    await inserir_servico(dono, caps_b, nome="Farmácia do CAPS B")
+    await inserir_servico(dono, caps_b, nome="Farmácia da Família", tipo="FARMACIA_FAMILIA")
+    caps_c = await inserir_unidade(dono, "CAPS C", distrito="DS-I")
+    await inserir_servico(dono, caps_c, nome="Farmácia do CAPS C", no_cnes=True)
+    usf = await inserir_unidade(dono, "USF Ibura", distrito="DS-III", tipo="USF")
+    await inserir_servico(dono, usf, nome="Sala de vacina da USF", tipo="SALA_VACINA")
+    await inserir_unidade(dono, "CAPS D", distrito="DS-III")
+    await inserir_servico(dono, None, nome="Sala de Vacinação do Shopping", tipo="SALA_VACINA")
+    return {"caps_a": caps_a, "caps_b": caps_b, "usf": usf}
+
+
+def _fora_cnes(
+    id_: UUID, nome: str, tipo: str, distrito: str, servicos: int, cnes: str | None = None
+) -> dict[str, Any]:
+    return {**_resumo(id_, nome, tipo, distrito, cnes=cnes), "servicos_fora_cnes": servicos}
+
+
+async def test_fora_cnes_lista_as_unidades_com_servico_fora_do_cnes_e_a_contagem(
+    app: FastAPI,
+    cliente: httpx.AsyncClient,
+    sessoes: Sessoes,
+    dono: AsyncConnection,
+) -> None:
+    """011/R2.4: subconsulta EXISTS; só unidades com ao menos um serviço fora do CNES, com a
+    quantidade desses serviços. Serviço solto não é de unidade nenhuma."""
+    unidades = await _semear_servicos_fora_cnes(dono)
+    await dono.commit()
+    gestor = await logado(sessoes, ("GESTOR_DADOS", GLOBAL))
+
+    resposta = await cliente.get(FORA_CNES, headers=bearer(app, gestor))
+
+    assert resposta.status_code == 200
+    ds1, ds3 = "Distrito Sanitário I", "Distrito Sanitário III"
+    assert resposta.json() == {
+        "itens": [
+            _fora_cnes(unidades["caps_a"], "CAPS A", "CAPS II", ds1, 1, cnes="0000001"),
+            _fora_cnes(unidades["caps_b"], "CAPS B", "CAPS II", ds1, 2),
+            _fora_cnes(unidades["usf"], "USF Ibura", "Unidade de Saúde da Família", ds3, 1),
+        ],
+        "total": 3,
+        "pagina": 1,
+        "tamanho": 20,
+    }
+
+
+async def test_fora_cnes_com_escopo_distrital_lista_so_as_do_distrito(
+    app: FastAPI,
+    cliente: httpx.AsyncClient,
+    sessoes: Sessoes,
+    dono: AsyncConnection,
+) -> None:
+    """011/R2.5: o escopo de leitura do usuário limita a consulta."""
+    unidades = await _semear_servicos_fora_cnes(dono)
+    await _criar_painel_distrital(dono)
+    ds3 = await id_pelo_codigo(sessoes, "distrito", "DS-III")
+    await dono.commit()
+    tecnico = await logado(sessoes, (PAINEL_DISTRITAL, ("distrito", str(ds3))))
+
+    resposta = await cliente.get(FORA_CNES, headers=bearer(app, tecnico))
+
+    assert resposta.status_code == 200
+    assert resposta.json()["itens"] == [
+        _fora_cnes(
+            unidades["usf"], "USF Ibura", "Unidade de Saúde da Família", "Distrito Sanitário III", 1
+        )
+    ]
+    assert resposta.json()["total"] == 1
+
+
+async def test_fora_cnes_filtra_por_distrito_e_por_tipo(
+    app: FastAPI,
+    cliente: httpx.AsyncClient,
+    sessoes: Sessoes,
+    dono: AsyncConnection,
+) -> None:
+    """011/R2.7: filtro por distrito e por tipo de unidade."""
+    unidades = await _semear_servicos_fora_cnes(dono)
+    ds1 = await id_pelo_codigo(sessoes, "distrito", "DS-I")
+    usf = await id_pelo_codigo(sessoes, "tipo_unidade", "USF")
+    await dono.commit()
+    gestor = await logado(sessoes, ("GESTOR_DADOS", GLOBAL))
+
+    async def ids(**filtros: int) -> list[str]:
+        resposta = await cliente.get(FORA_CNES, params=filtros, headers=bearer(app, gestor))
+        assert resposta.status_code == 200
+        return [item["id"] for item in resposta.json()["itens"]]
+
+    assert await ids(distrito=ds1) == [str(unidades["caps_a"]), str(unidades["caps_b"])]
+    assert await ids(tipo=usf) == [str(unidades["usf"])]
+    assert await ids(distrito=ds1, tipo=usf) == []
+
+
+async def test_fora_cnes_pagina_o_resultado(
+    app: FastAPI,
+    cliente: httpx.AsyncClient,
+    sessoes: Sessoes,
+    dono: AsyncConnection,
+) -> None:
+    """011/R2.4; design § Rotas: `PaginaOut` com o total da consulta inteira."""
+    unidades = await _semear_servicos_fora_cnes(dono)
+    await dono.commit()
+    gestor = await logado(sessoes, ("GESTOR_DADOS", GLOBAL))
+
+    resposta = await cliente.get(
+        FORA_CNES, params={"pagina": 2, "tamanho": 1}, headers=bearer(app, gestor)
+    )
+
+    assert resposta.status_code == 200
+    assert resposta.json() == {
+        "itens": [_fora_cnes(unidades["caps_b"], "CAPS B", "CAPS II", "Distrito Sanitário I", 2)],
+        "total": 3,
+        "pagina": 2,
+        "tamanho": 1,
+    }
+
+
+async def test_fora_cnes_sem_token_responde_401(cliente: httpx.AsyncClient) -> None:
+    """011/R2.8; 003/R4.1: rota protegida."""
+    await _sem_token_responde_401(cliente, FORA_CNES)
+
+
+async def test_fora_cnes_sem_dashboard_read_responde_403(
+    app: FastAPI, cliente: httpx.AsyncClient, sessoes: Sessoes
+) -> None:
+    """011/R2.8"""
+    await _sem_dashboard_read_responde_403(app, cliente, sessoes, FORA_CNES)
+
+
+async def test_fora_cnes_com_distrito_ou_tipo_inexistente_responde_422(
+    app: FastAPI, cliente: httpx.AsyncClient, sessoes: Sessoes
+) -> None:
+    """011/R2.9: distrito ou tipo que não existe nas referências."""
+    await _referencia_inexistente_responde_422(app, cliente, sessoes, FORA_CNES)
+
+
+@pytest.mark.parametrize(("params", "campo"), MAL_FORMADOS)
+async def test_fora_cnes_com_filtro_mal_formado_responde_422(
+    app: FastAPI,
+    cliente: httpx.AsyncClient,
+    sessoes: Sessoes,
+    params: dict[str, str],
+    campo: str,
+) -> None:
+    """011/R2.9: formato inválido vem do schema da rota."""
+    await _filtro_mal_formado_responde_422(app, cliente, sessoes, FORA_CNES, params, campo)
