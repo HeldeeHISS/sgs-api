@@ -7,8 +7,13 @@ from uuid import UUID
 from sqlalchemy import Integer, SmallInteger, Uuid, column, or_, select, table, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.modules.access.domain.authorization import Alvo, Concessao, escopo_de
-from src.modules.access.infrastructure.tables import permissions, role_assignments, role_permissions
+from src.modules.access.domain.authorization import Alvo, Concessao, PapelAtribuido, escopo_de
+from src.modules.access.infrastructure.tables import (
+    permissions,
+    role_assignments,
+    role_permissions,
+    roles,
+)
 
 # Só a coluna de versão de `users` (spec 002); a tabela completa é da infraestrutura de identity.
 _users = table("users", column("id", Uuid), column("authz_version", Integer))
@@ -62,6 +67,34 @@ class SqlRepositorioDePermissoes:
                 valido_ate=valido_ate,
             )
             for codigo, escopo_maximo, nivel, id_do_escopo, valido_ate in resultado.all()
+        ]
+
+    async def papeis(self, usuario_id: UUID, agora: datetime) -> Sequence[PapelAtribuido]:
+        vigente = or_(
+            role_assignments.c.valid_until.is_(None), role_assignments.c.valid_until > agora
+        )
+        resultado = await self._session.execute(
+            select(
+                roles.c.code,
+                roles.c.name,
+                role_assignments.c.scope_type,
+                role_assignments.c.scope_id,
+                role_assignments.c.origin,
+                role_assignments.c.valid_until,
+            )
+            .select_from(role_assignments.join(roles, roles.c.id == role_assignments.c.role_id))
+            .where(role_assignments.c.user_id == usuario_id, vigente)
+            .order_by(roles.c.code, role_assignments.c.scope_type, role_assignments.c.scope_id)
+        )
+        return [
+            PapelAtribuido(
+                codigo=codigo,
+                nome=nome,
+                escopo=escopo_de(nivel, id_do_escopo),
+                origem=origem,
+                valido_ate=valido_ate,
+            )
+            for codigo, nome, nivel, id_do_escopo, origem, valido_ate in resultado.all()
         ]
 
     async def invalidar(self, usuario_id: UUID) -> None:

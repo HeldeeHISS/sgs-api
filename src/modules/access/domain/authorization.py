@@ -77,6 +77,18 @@ class Concessao:
     valido_ate: datetime | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class PapelAtribuido:
+    """Uma atribuição ativa do usuário, para o perfil (R5.1): o papel, o escopo, a origem
+    (`direct` ou `group`) e a expiração, se houver."""
+
+    codigo: str
+    nome: str
+    escopo: Escopo
+    origem: str
+    valido_ate: datetime | None = None
+
+
 def permissoes_efetivas(concessoes: Iterable[Concessao]) -> PermissoesEfetivas:
     """União das concessões, com cada escopo limitado pelo escopo máximo da permissão no papel."""
     escopos: dict[str, dict[Escopo, None]] = {}
