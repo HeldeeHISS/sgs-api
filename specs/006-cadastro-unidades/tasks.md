@@ -34,7 +34,7 @@
   - Bloqueada por: T3
   - Requisitos: R5.1–R5.3
   - Pronto quando: `tests/integration/registry/test_equipamentos.py` passa
-- [ ] T8. Serviços (vinculados e soltos) e vínculo por id
+- [x] T8. Serviços (vinculados e soltos) e vínculo por id
   - Bloqueada por: T7
   - Requisitos: R6.1–R6.4
   - Pronto quando: `tests/integration/registry/test_servicos.py` passa
