@@ -15,10 +15,12 @@ from src.core.logging import configure_logging
 from src.core.problem import install_error_handlers
 from src.core.request_context import RequestContextMiddleware
 from src.core.security_headers import SecurityHeadersMiddleware
-from src.modules.access.api import atribuicoes, me
+from src.modules.access.api import atribuicoes, mapeamentos, me
 from src.modules.access.application.permissoes import ResolvedorDePermissoes
 from src.modules.access.infrastructure.repository import (
+    SemMembrosDeGrupo,
     SqlRepositorioDeAtribuicoes,
+    SqlRepositorioDeMapeamentos,
     SqlRepositorioDePermissoes,
     SqlResolvedorDeUnidade,
 )
@@ -77,6 +79,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.repositorio_de_sessoes = SqlSessionRepository
     app.state.repositorio_de_permissoes = SqlRepositorioDePermissoes
     app.state.repositorio_de_atribuicoes = SqlRepositorioDeAtribuicoes
+    app.state.repositorio_de_mapeamentos = SqlRepositorioDeMapeamentos
+    # Membros dos grupos do diretório: sem `user_groups` até a 004/T1 (003/T8, Perguntas em
+    # aberto).
+    app.state.membros_de_grupo = SemMembrosDeGrupo
     app.state.auditoria = SqlAuditStore
     app.state.repositorio_de_unidades = SqlRepositorioDeUnidades
     app.state.repositorio_de_referencias = SqlRepositorioDeReferencias
@@ -95,6 +101,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(jwks.router)
     app.include_router(me.router)
     app.include_router(atribuicoes.router)
+    app.include_router(mapeamentos.router)
     app.include_router(unidades.router)
     app.include_router(equipamentos.router)
     app.include_router(servicos.router)

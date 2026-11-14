@@ -2,11 +2,23 @@
 
 from typing import Literal, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.modules.access.domain.authorization import Area, Distrito, Escopo, Global, Unidade
 
 NivelDeEscopo = Literal["global", "area", "distrito", "unidade"]
+
+
+class EscopoIn(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    tipo: NivelDeEscopo
+    id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=36,
+        description="Id da área técnica, do distrito ou da unidade; nulo se global.",
+    )
 
 
 class EscopoOut(BaseModel):

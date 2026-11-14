@@ -16,7 +16,7 @@ from src.modules.access.api.deps import (
     ator_da_requisicao,
     require,
 )
-from src.modules.access.api.schemas import EscopoOut, NivelDeEscopo
+from src.modules.access.api.schemas import EscopoIn, EscopoOut
 from src.modules.access.application.atribuicoes import (
     PERMISSAO,
     Atribuicao,
@@ -33,18 +33,6 @@ _ORIGENS: dict[str, Literal["direta", "grupo"]] = {"direct": "direta", "group": 
 
 def _problema(descricao: str) -> dict[str, Any]:
     return {"description": descricao, "content": {PROBLEM_JSON: {}}}
-
-
-class EscopoIn(BaseModel):
-    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-
-    tipo: NivelDeEscopo
-    id: str | None = Field(
-        default=None,
-        min_length=1,
-        max_length=36,
-        description="Id da área técnica, do distrito ou da unidade; nulo se global.",
-    )
 
 
 class AtribuicaoCreate(BaseModel):

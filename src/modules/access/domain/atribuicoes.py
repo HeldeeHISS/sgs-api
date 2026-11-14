@@ -19,7 +19,8 @@ class Atribuicao:
     """Um papel atribuído a um usuário num escopo.
 
     `origem` é `direct` (pela rota de administração) ou `group` (derivada de um mapeamento de
-    grupo, R3); `concedida_por`, quem atribuiu, se direta; `valido_ate`, a expiração (R2.3).
+    grupo, R3); `concedida_por`, quem atribuiu, se direta; `valido_ate`, a expiração (R2.3);
+    `mapeamento_id`, o mapeamento que gerou a derivada (nulo se direta).
     """
 
     id: UUID
@@ -29,6 +30,7 @@ class Atribuicao:
     origem: str
     concedida_por: UUID | None = None
     valido_ate: datetime | None = None
+    mapeamento_id: UUID | None = None
 
 
 def niveis_aceitos(escopos_maximos: Iterable[str]) -> frozenset[str]:

@@ -29,6 +29,8 @@ __all__ = [
     "PaginaDeAtribuicoes",
     "PedidoDeAtribuicao",
     "atribuir_papel",
+    "campos_de_auditoria",
+    "escopo_valido",
     "listar_atribuicoes",
     "remover_atribuicao",
 ]
@@ -92,7 +94,9 @@ async def atribuir_papel(
         erros.append(FieldError(campo="usuario_id", mensagem="Usuário não encontrado."))
     if pedido.valido_ate is not None and pedido.valido_ate <= agora:
         erros.append(FieldError(campo="valido_ate", mensagem="A expiração precisa ser futura."))
-    escopo = await _escopo_valido(pedido, atribuicoes, erros)
+    escopo = await escopo_valido(
+        pedido.papel, pedido.nivel, pedido.id_do_escopo, atribuicoes=atribuicoes, erros=erros
+    )
     if escopo is None or erros:
         raise DomainValidationError("A requisição tem campos inválidos.", errors=erros)
     if await atribuicoes.ha_direta_vigente(pedido.usuario_id, pedido.papel, escopo, agora):
@@ -113,31 +117,36 @@ async def atribuir_papel(
         acao="papel.atribuido",
         ator=ator,
         entidade=Entidade(tipo=ENTIDADE, id=str(atribuicao.id)),
-        mudancas=[Mudanca(campo=c, de=None, para=v) for c, v in _campos(atribuicao).items()],
+        mudancas=[
+            Mudanca(campo=c, de=None, para=v) for c, v in campos_de_auditoria(atribuicao).items()
+        ],
     )
     return atribuicao
 
 
-async def _escopo_valido(
-    pedido: PedidoDeAtribuicao, atribuicoes: RepositorioDeAtribuicoes, erros: list[FieldError]
+async def escopo_valido(
+    papel: str,
+    nivel: str,
+    id_do_escopo: str | None,
+    *,
+    atribuicoes: RepositorioDeAtribuicoes,
+    erros: list[FieldError],
 ) -> Escopo | None:
-    """O escopo pedido, se o papel existe, o nível é o dele e o escopo existe; senão anota o
-    erro."""
-    maximos = await atribuicoes.escopos_maximos(pedido.papel)
+    """O escopo pedido, se o papel existe, o nível é o dele e o escopo existe (R2.1, R2.2);
+    senão anota o erro. Vale também para o mapeamento de grupo (R3.1)."""
+    maximos = await atribuicoes.escopos_maximos(papel)
     if maximos is None:
         erros.append(FieldError(campo="papel", mensagem="Papel não encontrado."))
         return None
     aceitos = niveis_aceitos(maximos)
-    if pedido.nivel not in aceitos:
+    if nivel not in aceitos:
         exigido = " ou ".join(sorted(aceitos))
         erros.append(
-            FieldError(
-                campo="escopo.tipo", mensagem=f"O papel {pedido.papel} exige escopo {exigido}."
-            )
+            FieldError(campo="escopo.tipo", mensagem=f"O papel {papel} exige escopo {exigido}.")
         )
         return None
     try:
-        escopo = escopo_de(pedido.nivel, pedido.id_do_escopo)
+        escopo = escopo_de(nivel, id_do_escopo)
     except ValueError:
         escopo = None
     if escopo is None or not await atribuicoes.escopo_existe(escopo):
@@ -171,7 +180,9 @@ async def remover_atribuicao(
         acao="papel.removido",
         ator=ator,
         entidade=Entidade(tipo=ENTIDADE, id=str(atribuicao.id)),
-        mudancas=[Mudanca(campo=c, de=v, para=None) for c, v in _campos(atribuicao).items()],
+        mudancas=[
+            Mudanca(campo=c, de=v, para=None) for c, v in campos_de_auditoria(atribuicao).items()
+        ],
     )
 
 
@@ -191,13 +202,17 @@ async def listar_atribuicoes(
     return PaginaDeAtribuicoes(itens=itens, total=total)
 
 
-def _campos(atribuicao: Atribuicao) -> dict[str, str | None]:
-    """Os campos da atribuição na auditoria, como valores JSON."""
+def campos_de_auditoria(atribuicao: Atribuicao) -> dict[str, str | None]:
+    """Os campos da atribuição na auditoria, como valores JSON; a derivada de grupo leva também
+    o `mapeamento_id` (R3)."""
     nivel, id_do_escopo = colunas_do_escopo(atribuicao.escopo)
-    return {
+    campos = {
         "usuario_id": str(atribuicao.usuario_id),
         "papel": atribuicao.papel,
         "escopo_tipo": nivel,
         "escopo_id": id_do_escopo,
         "valido_ate": None if atribuicao.valido_ate is None else atribuicao.valido_ate.isoformat(),
     }
+    if atribuicao.mapeamento_id is not None:
+        campos["mapeamento_id"] = str(atribuicao.mapeamento_id)
+    return campos

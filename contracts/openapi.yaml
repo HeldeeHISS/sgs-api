@@ -322,6 +322,196 @@
         }
       }
     },
+    "/api/v1/admin/mapeamentos-grupo": {
+      "get": {
+        "tags": [
+          "administração de acesso"
+        ],
+        "summary": "Listar mapeamentos grupo→papel",
+        "description": "003/R3: os mapeamentos, na ordem de criação.",
+        "operationId": "listar_api_v1_admin_mapeamentos_grupo_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 1,
+              "description": "Página, a partir de 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Página, a partir de 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Itens por página (padrão 20, máximo 100).",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Itens por página (padrão 20, máximo 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaOut_MapeamentoOut_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `papel:assign`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Parâmetro inválido",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "administração de acesso"
+        ],
+        "summary": "Mapear grupo do diretório para papel",
+        "description": "003/R3.1: os membros ativos do grupo recebem o papel, que vale na próxima requisição\ndeles (R4.5).",
+        "operationId": "criar_api_v1_admin_mapeamentos_grupo_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MapeamentoCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapeamentoOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `papel:assign`, ou mapeamento de grupo de que se é membro",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "409": {
+            "description": "O grupo já está mapeado para este papel neste escopo",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, papel inexistente, escopo de nível diferente do exigido pelo papel ou inexistente",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/mapeamentos-grupo/{id}": {
+      "delete": {
+        "tags": [
+          "administração de acesso"
+        ],
+        "summary": "Remover mapeamento grupo→papel",
+        "description": "003/R3.2, R3.3: saem as atribuições derivadas do mapeamento; as diretas ficam.",
+        "operationId": "remover_api_v1_admin_mapeamentos_grupo__id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `papel:assign`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "O mapeamento não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Id inválido",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
     "/api/v1/unidades": {
       "get": {
         "tags": [
@@ -4337,6 +4527,72 @@
         ],
         "title": "Jwks"
       },
+      "MapeamentoCreate": {
+        "properties": {
+          "grupo_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Grupo Id",
+            "description": "Id do grupo do diretório (spec 004)."
+          },
+          "papel": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "pattern": "^[A-Z_]+$",
+            "title": "Papel",
+            "description": "Código do papel."
+          },
+          "escopo": {
+            "$ref": "#/components/schemas/EscopoIn"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "grupo_id",
+          "papel",
+          "escopo"
+        ],
+        "title": "MapeamentoCreate",
+        "description": "003/R3.1: o grupo do diretório, o papel e o escopo exigido pelo papel."
+      },
+      "MapeamentoOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "grupo_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Grupo Id"
+          },
+          "papel": {
+            "type": "string",
+            "title": "Papel",
+            "description": "Código do papel."
+          },
+          "escopo": {
+            "$ref": "#/components/schemas/EscopoOut"
+          },
+          "criado_por": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Criado Por"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "grupo_id",
+          "papel",
+          "escopo",
+          "criado_por"
+        ],
+        "title": "MapeamentoOut"
+      },
       "MudancaOut": {
         "properties": {
           "campo": {
@@ -4513,6 +4769,37 @@
           "tamanho"
         ],
         "title": "PaginaOut[InventarioOut]"
+      },
+      "PaginaOut_MapeamentoOut_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/MapeamentoOut"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho"
+        ],
+        "title": "PaginaOut[MapeamentoOut]"
       },
       "PaginaOut_UnidadeForaCnesOut_": {
         "properties": {
