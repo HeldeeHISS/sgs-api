@@ -35,6 +35,7 @@
   - Requisitos: R2.1–R2.5
   - Pronto quando: `tests/integration/access/test_admin_atribuicoes.py` passa
 - [x] T8. Mapeamentos grupo→papel e recálculo de atribuições derivadas
+  - Nota da revisão: o efeito real de R3.1/R3.2 depende da 004/T1; até lá, a porta `MembrosDeGrupo` está ligada a `SemMembrosDeGrupo` (`src/main.py`) e nenhum membro de grupo recebe atribuição derivada.
   - Bloqueada por: T7
   - Requisitos: R3.1–R3.3
   - Pronto quando: `tests/integration/access/test_mapeamento_grupos.py` passa
