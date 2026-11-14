@@ -54,6 +54,8 @@ class UsuarioAtual:
     id: UUID
     sessao_id: UUID
     permissoes: PermissoesEfetivas
+    papeis: tuple[str, ...] = ()
+    """Códigos dos papéis vigentes, para o `actor_roles` da auditoria (008/R1.2)."""
 
 
 @dataclass(frozen=True)
@@ -98,7 +100,8 @@ async def verificar(
     """Levanta `AcessoNegado` se o usuário não tem `permissao` em escopo nenhum (R4.2) ou, havendo
     recurso, se nenhum escopo dele cobre o recurso (R4.3). Recurso que não existe dá 404, mas só
     a quem tem a permissão em algum escopo: aos demais, o 403 não diz se ele existe."""
-    permissoes = await resolvedor.permissoes_de(repositorio, usuario_id)
+    resolucao = await resolvedor.resolver(repositorio, usuario_id)
+    permissoes = resolucao.permissoes
     if not pode(permissoes, permissao):
         raise AcessoNegado(permissao, recurso)
     if recurso is not None:
@@ -109,7 +112,9 @@ async def verificar(
             raise NotFound("O recurso pedido não existe.")
         if not pode(permissoes, permissao, alvo):
             raise AcessoNegado(permissao, recurso)
-    return UsuarioAtual(id=usuario_id, sessao_id=sessao_id, permissoes=permissoes)
+    return UsuarioAtual(
+        id=usuario_id, sessao_id=sessao_id, permissoes=permissoes, papeis=resolucao.papeis
+    )
 
 
 def exigir_no_escopo(usuario: UsuarioAtual, permissao: str, alvo: Alvo) -> None:

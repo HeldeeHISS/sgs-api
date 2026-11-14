@@ -68,13 +68,15 @@ class Concessao:
     """Uma permissão que uma atribuição ativa dá ao usuário.
 
     `escopo_maximo` é o `max_scope` da permissão no papel (`global`, `area`, `distrito` ou
-    `unidade`); `escopo` é o da atribuição; `valido_ate`, a expiração dela, se houver.
+    `unidade`); `escopo` é o da atribuição; `valido_ate`, a expiração dela, se houver; `papel`,
+    o código do papel atribuído, que vai para a auditoria (`actor_roles`, 008/R1.2).
     """
 
     permissao: str
     escopo_maximo: str
     escopo: Escopo
     valido_ate: datetime | None = None
+    papel: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,6 +99,11 @@ def permissoes_efetivas(concessoes: Iterable[Concessao]) -> PermissoesEfetivas:
         if escopo is not None:
             escopos.setdefault(concessao.permissao, {})[escopo] = None
     return MappingProxyType({codigo: tuple(vistos) for codigo, vistos in escopos.items()})
+
+
+def papeis_das_concessoes(concessoes: Iterable[Concessao]) -> tuple[str, ...]:
+    """Os códigos dos papéis das concessões, sem repetir, em ordem alfabética."""
+    return tuple(sorted({c.papel for c in concessoes if c.papel is not None}))
 
 
 def _limitado(escopo: Escopo, maximo: str) -> Escopo | None:

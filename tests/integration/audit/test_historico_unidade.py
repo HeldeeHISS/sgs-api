@@ -19,6 +19,7 @@ import httpx
 import pytest
 from fastapi import FastAPI
 from pydantic import SecretStr
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from src.main import create_app
@@ -190,6 +191,26 @@ async def test_historico_traz_eventos_da_unidade_de_equipamentos_e_servicos_com_
     assert criada["autor_nome"] == "Maria Silva"
     assert criada["autor_id"] is not None
     assert {"campo": "name", "de": None, "para": "CAPS Esperança"} in criada["mudancas"]
+
+
+async def test_evento_gravado_pela_rota_leva_os_papeis_do_autor(
+    app: FastAPI, cliente: httpx.AsyncClient, sessoes: Sessoes
+) -> None:
+    """008/R1.2, modelo-dados.md (`actor_roles`): o evento que a rota grava leva os códigos dos
+    papéis vigentes de quem fez a ação, e o histórico os devolve em `autor_papeis` (011/T14,
+    resolvido na revisão)."""
+    caps = await _criar_unidade(app, cliente, sessoes, "CAPS Esperança")
+    auditor = await logado(sessoes, ("AUDITOR", GLOBAL))
+
+    resposta = await cliente.get(_rota(caps), headers=bearer(app, auditor))
+
+    async with sessoes() as sessao:
+        papeis = await sessao.scalar(
+            text("SELECT actor_roles FROM audit_log WHERE action = 'unidade.criada'")
+        )
+    assert papeis == ["GESTOR_DADOS"]
+    [criada] = resposta.json()["itens"]
+    assert criada["autor_papeis"] == ["GESTOR_DADOS"]
 
 
 async def test_historico_e_paginado_com_o_total_da_unidade(

@@ -83,11 +83,14 @@ class SqlRepositorioDePermissoes:
                 role_assignments.c.scope_type,
                 role_assignments.c.scope_id,
                 role_assignments.c.valid_until,
+                roles.c.code,
             )
             .select_from(
                 role_assignments.join(
                     role_permissions, role_permissions.c.role_id == role_assignments.c.role_id
-                ).join(permissions, permissions.c.id == role_permissions.c.permission_id)
+                )
+                .join(permissions, permissions.c.id == role_permissions.c.permission_id)
+                .join(roles, roles.c.id == role_assignments.c.role_id)
             )
             .where(role_assignments.c.user_id == usuario_id, vigente)
         )
@@ -97,8 +100,9 @@ class SqlRepositorioDePermissoes:
                 escopo_maximo=escopo_maximo,
                 escopo=escopo_de(nivel, id_do_escopo),
                 valido_ate=valido_ate,
+                papel=papel,
             )
-            for codigo, escopo_maximo, nivel, id_do_escopo, valido_ate in resultado.all()
+            for codigo, escopo_maximo, nivel, id_do_escopo, valido_ate, papel in resultado.all()
         ]
 
     async def papeis(self, usuario_id: UUID, agora: datetime) -> Sequence[PapelAtribuido]:
