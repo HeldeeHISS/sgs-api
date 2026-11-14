@@ -32,7 +32,8 @@ from src.modules.dashboard.infrastructure.consultas import SqlConsultasDashboard
 from src.modules.identity.api import jwks
 from src.modules.identity.infrastructure.repository import SqlSessionRepository, SqlUserRepository
 from src.modules.identity.infrastructure.tokens import JwtTokenService
-from src.modules.registry.api import referencias, unidades
+from src.modules.registry.api import equipamentos, referencias, unidades
+from src.modules.registry.infrastructure.equipamentos import SqlRepositorioDeEquipamentos
 from src.modules.registry.infrastructure.referencias import SqlRepositorioDeReferencias
 from src.modules.registry.infrastructure.repository import SqlRepositorioDeUnidades
 
@@ -78,6 +79,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.auditoria = SqlAuditStore
     app.state.repositorio_de_unidades = SqlRepositorioDeUnidades
     app.state.repositorio_de_referencias = SqlRepositorioDeReferencias
+    app.state.repositorio_de_equipamentos = SqlRepositorioDeEquipamentos
     app.state.historico_de_unidades = SqlHistoricoDeUnidades
     app.state.consultas_dashboard = SqlConsultasDashboard
     app.state.log_do_banco = SqlLogDoBanco
@@ -92,6 +94,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(me.router)
     app.include_router(atribuicoes.router)
     app.include_router(unidades.router)
+    app.include_router(equipamentos.router)
     app.include_router(referencias.router)
     app.include_router(historico.router)
     app.include_router(catalogo.router)

@@ -301,3 +301,26 @@ async def test_registro_novo_cai_na_particao_do_mes(banco: BancoDeTeste) -> None
     await engine.dispose()
 
     assert registros == {_nome(0): 1}
+
+
+async def test_indice_do_periodo_vale_em_cada_particao(banco: BancoDeTeste) -> None:
+    """011/R7.7: `ix_db_change_log_occurred_at`, criado na tabela-mãe, existe em toda partição,
+    inclusive nas que o procedimento cria depois da migração.
+    """
+    engine = motor(banco.url_dono)
+    async with engine.begin() as conexao:
+        await conexao.execute(text("CALL sp_ensure_monthly_partitions('db_change_log', 14)"))
+    async with engine.connect() as conexao:
+        particoes = await _particoes(conexao)
+        linhas = await conexao.execute(
+            text(
+                "SELECT t.relname FROM pg_inherits i"
+                " JOIN pg_index x ON x.indexrelid = i.inhrelid"
+                " JOIN pg_class t ON t.oid = x.indrelid"
+                " WHERE i.inhparent = 'ix_db_change_log_occurred_at'::regclass"
+            )
+        )
+        com_indice = set(linhas.scalars())
+    await engine.dispose()
+
+    assert com_indice == set(particoes) == set(_esperadas(*range(15)))
