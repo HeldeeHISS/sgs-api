@@ -130,7 +130,7 @@ As tarefas de banco (T1 a T10) só dependem das migrações 0003 e 0006 e podem 
 
 ## Entrega
 
-- [ ] T20. Arquivo SQL único e documentação dos `.sql`
+- [x] T20. Arquivo SQL único e documentação dos `.sql`
   - `make sql-bd` (DDL offline + consultas com cabeçalho em `build/sql-bd.sql`, no `.gitignore`); teste de arquitetura dos cabeçalhos, nomes e fragmento de escopo; seção da disciplina no README (onde está cada objeto, 30 tuplas, exclusão lógica).
   - Bloqueada por: T1 a T19
   - Requisitos: R1.4, R2.5, R11.1, R11.3, R11.4, R11.5
