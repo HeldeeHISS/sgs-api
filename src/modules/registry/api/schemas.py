@@ -132,8 +132,10 @@ class UnidadeDesativacao(BaseModel):
     motivo: str = Field(min_length=1, max_length=500)
 
 
-class UnidadeOut(BaseModel):
-    """A unidade completa. `versao` é a mesma do cabeçalho `ETag` (006/R3.2)."""
+class UnidadeNaListaOut(BaseModel):
+    """O item da listagem de unidades (006/R2.1): a unidade sem os dados de contato do gestor
+    (`nome_gestor` e `telefone`), que só saem no detalhe da unidade que a pessoa abriu
+    (`steering/security.md` § LGPD, a escolha mais restritiva; 006, "Perguntas em aberto")."""
 
     id: UUID
     nome: str
@@ -144,8 +146,6 @@ class UnidadeOut(BaseModel):
     cep: str
     endereco: str
     bairro: str | None
-    telefone: str | None
-    nome_gestor: str | None
     horario_funcionamento: dict[str, Any] | None
     latitude: float | None
     longitude: float | None
@@ -157,29 +157,46 @@ class UnidadeOut(BaseModel):
 
     @classmethod
     def de(cls, unidade: Unidade) -> Self:
+        return cls(**_campos_do_resumo(unidade))
+
+
+class UnidadeOut(UnidadeNaListaOut):
+    """A unidade completa. `versao` é a mesma do cabeçalho `ETag` (006/R3.2)."""
+
+    telefone: str | None
+    nome_gestor: str | None
+
+    @classmethod
+    def de(cls, unidade: Unidade) -> Self:
         return cls(
-            id=unidade.id,
-            nome=unidade.name,
-            cnes=unidade.cnes,
-            cnes_pendente=unidade.cnes_pendente,
-            tipo_unidade_id=unidade.unit_type_id,
-            distrito_id=unidade.district_id,
-            cep=unidade.cep,
-            endereco=unidade.address,
-            bairro=unidade.neighborhood,
+            **_campos_do_resumo(unidade),
             telefone=unidade.phone,
             nome_gestor=unidade.manager_name,
-            horario_funcionamento=(
-                None if unidade.opening_hours is None else dict(unidade.opening_hours)
-            ),
-            latitude=None if unidade.latitude is None else float(unidade.latitude),
-            longitude=None if unidade.longitude is None else float(unidade.longitude),
-            status=cast(StatusDaUnidade, unidade.status),  # o CHECK do banco garante
-            pendencias=unidade.pending_issues,
-            versao=unidade.version,
-            criado_em=unidade.created_at,
-            atualizado_em=unidade.updated_at,
         )
+
+
+def _campos_do_resumo(unidade: Unidade) -> dict[str, Any]:
+    return {
+        "id": unidade.id,
+        "nome": unidade.name,
+        "cnes": unidade.cnes,
+        "cnes_pendente": unidade.cnes_pendente,
+        "tipo_unidade_id": unidade.unit_type_id,
+        "distrito_id": unidade.district_id,
+        "cep": unidade.cep,
+        "endereco": unidade.address,
+        "bairro": unidade.neighborhood,
+        "horario_funcionamento": (
+            None if unidade.opening_hours is None else dict(unidade.opening_hours)
+        ),
+        "latitude": None if unidade.latitude is None else float(unidade.latitude),
+        "longitude": None if unidade.longitude is None else float(unidade.longitude),
+        "status": cast(StatusDaUnidade, unidade.status),  # o CHECK do banco garante
+        "pendencias": unidade.pending_issues,
+        "versao": unidade.version,
+        "criado_em": unidade.created_at,
+        "atualizado_em": unidade.updated_at,
+    }
 
 
 class EquipamentoOut(BaseModel):

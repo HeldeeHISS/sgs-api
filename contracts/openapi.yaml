@@ -518,7 +518,7 @@
           "unidades"
         ],
         "summary": "Listar e buscar unidades de saúde",
-        "description": "006/R2.1 a R2.4, R2.6: uma página das unidades no escopo de leitura do usuário, com o total\nda listagem. Os filtros se combinam.",
+        "description": "006/R2.1 a R2.4, R2.6: uma página das unidades no escopo de leitura do usuário, com o total\nda listagem. Os filtros se combinam. O item é o resumo, sem os dados de contato do gestor.",
         "operationId": "listar_api_v1_unidades_get",
         "security": [
           {
@@ -702,7 +702,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginaOut_UnidadeOut_"
+                  "$ref": "#/components/schemas/PaginaOut_UnidadeNaListaOut_"
                 }
               }
             }
@@ -4832,11 +4832,11 @@
         ],
         "title": "PaginaOut[UnidadeForaCnesOut]"
       },
-      "PaginaOut_UnidadeOut_": {
+      "PaginaOut_UnidadeNaListaOut_": {
         "properties": {
           "itens": {
             "items": {
-              "$ref": "#/components/schemas/UnidadeOut"
+              "$ref": "#/components/schemas/UnidadeNaListaOut"
             },
             "type": "array",
             "title": "Itens"
@@ -4861,7 +4861,7 @@
           "pagina",
           "tamanho"
         ],
-        "title": "PaginaOut[UnidadeOut]"
+        "title": "PaginaOut[UnidadeNaListaOut]"
       },
       "PaginaOut_UnidadeResumoOut_": {
         "properties": {
@@ -5655,28 +5655,6 @@
             ],
             "title": "Bairro"
           },
-          "telefone": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Telefone"
-          },
-          "nome_gestor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Nome Gestor"
-          },
           "horario_funcionamento": {
             "anyOf": [
               {
@@ -5738,6 +5716,28 @@
             "format": "date-time",
             "title": "Atualizado Em"
           },
+          "telefone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefone"
+          },
+          "nome_gestor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome Gestor"
+          },
           "equipamentos": {
             "items": {
               "$ref": "#/components/schemas/src__modules__registry__api__schemas__EquipamentoOut"
@@ -5764,8 +5764,6 @@
           "cep",
           "endereco",
           "bairro",
-          "telefone",
-          "nome_gestor",
           "horario_funcionamento",
           "latitude",
           "longitude",
@@ -5774,6 +5772,8 @@
           "versao",
           "criado_em",
           "atualizado_em",
+          "telefone",
+          "nome_gestor",
           "equipamentos",
           "servicos"
         ],
@@ -5826,6 +5826,144 @@
         ],
         "title": "UnidadeForaCnesOut",
         "description": "Unidade com serviço fora do CNES e a quantidade desses serviços (011/R2.4)."
+      },
+      "UnidadeNaListaOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "cnes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cnes"
+          },
+          "cnes_pendente": {
+            "type": "boolean",
+            "title": "Cnes Pendente"
+          },
+          "tipo_unidade_id": {
+            "type": "integer",
+            "title": "Tipo Unidade Id"
+          },
+          "distrito_id": {
+            "type": "integer",
+            "title": "Distrito Id"
+          },
+          "cep": {
+            "type": "string",
+            "title": "Cep"
+          },
+          "endereco": {
+            "type": "string",
+            "title": "Endereco"
+          },
+          "bairro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bairro"
+          },
+          "horario_funcionamento": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horario Funcionamento"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ativa",
+              "inativa",
+              "em_implantacao"
+            ],
+            "title": "Status"
+          },
+          "pendencias": {
+            "type": "integer",
+            "title": "Pendencias"
+          },
+          "versao": {
+            "type": "integer",
+            "title": "Versao"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Atualizado Em"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "cnes",
+          "cnes_pendente",
+          "tipo_unidade_id",
+          "distrito_id",
+          "cep",
+          "endereco",
+          "bairro",
+          "horario_funcionamento",
+          "latitude",
+          "longitude",
+          "status",
+          "pendencias",
+          "versao",
+          "criado_em",
+          "atualizado_em"
+        ],
+        "title": "UnidadeNaListaOut",
+        "description": "O item da listagem de unidades (006/R2.1): a unidade sem os dados de contato do gestor\n(`nome_gestor` e `telefone`), que só saem no detalhe da unidade que a pessoa abriu\n(`steering/security.md` § LGPD, a escolha mais restritiva; 006, \"Perguntas em aberto\")."
       },
       "UnidadeOut": {
         "properties": {
@@ -5880,28 +6018,6 @@
             ],
             "title": "Bairro"
           },
-          "telefone": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Telefone"
-          },
-          "nome_gestor": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Nome Gestor"
-          },
           "horario_funcionamento": {
             "anyOf": [
               {
@@ -5962,6 +6078,28 @@
             "type": "string",
             "format": "date-time",
             "title": "Atualizado Em"
+          },
+          "telefone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telefone"
+          },
+          "nome_gestor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome Gestor"
           }
         },
         "type": "object",
@@ -5975,8 +6113,6 @@
           "cep",
           "endereco",
           "bairro",
-          "telefone",
-          "nome_gestor",
           "horario_funcionamento",
           "latitude",
           "longitude",
@@ -5984,7 +6120,9 @@
           "pendencias",
           "versao",
           "criado_em",
-          "atualizado_em"
+          "atualizado_em",
+          "telefone",
+          "nome_gestor"
         ],
         "title": "UnidadeOut",
         "description": "A unidade completa. `versao` é a mesma do cabeçalho `ETag` (006/R3.2)."

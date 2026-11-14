@@ -27,6 +27,7 @@ from src.modules.registry.api.schemas import (
     UnidadeCreate,
     UnidadeDesativacao,
     UnidadeDetalheOut,
+    UnidadeNaListaOut,
     UnidadeOut,
     UnidadeUpdate,
 )
@@ -95,9 +96,9 @@ async def listar(
     ] = None,
     pagina: NumeroDaPagina = 1,
     tamanho: TamanhoDaPagina = TAMANHO_PADRAO,
-) -> PaginaOut[UnidadeOut]:
+) -> PaginaOut[UnidadeNaListaOut]:
     """006/R2.1 a R2.4, R2.6: uma página das unidades no escopo de leitura do usuário, com o total
-    da listagem. Os filtros se combinam."""
+    da listagem. Os filtros se combinam. O item é o resumo, sem os dados de contato do gestor."""
     texto = None if q is None else (q.strip() or None)
     filtros = FiltrosDeUnidades(
         texto=texto,
@@ -116,7 +117,7 @@ async def listar(
             unidades=request.app.state.repositorio_de_unidades(sessao),
         )
     return PaginaOut(
-        itens=[UnidadeOut.de(unidade) for unidade in resultado.itens],
+        itens=[UnidadeNaListaOut.de(unidade) for unidade in resultado.itens],
         total=resultado.total,
         pagina=pagina,
         tamanho=tamanho,
