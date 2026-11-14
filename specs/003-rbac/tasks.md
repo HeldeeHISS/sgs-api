@@ -26,7 +26,7 @@
   - Bloqueada por: T4
   - Requisitos: R4.1
   - Pronto quando: `tests/architecture/test_rotas_protegidas.py` passa
-- [ ] T6. `GET /me`
+- [x] T6. `GET /me`
   - Bloqueada por: T3, T4 (`CurrentUser`)
   - Requisitos: R5.1
   - Pronto quando: `tests/integration/access/test_me.py` passa

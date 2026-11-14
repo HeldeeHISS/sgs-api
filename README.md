@@ -38,9 +38,43 @@ uv sync                    # Python 3.13 e dependências, travadas pelo uv.lock
 uv run pre-commit install  # verificações antes de cada commit
 make check                 # lint, formatação, tipos, camadas e testes
 make openapi               # regenera contracts/openapi.yaml depois de mudar rotas
+make sql-bd                # gera build/sql-bd.sql, o SQL da disciplina de BD (sem banco)
 ```
 
 Para rodar os testes num PostgreSQL já em execução, em vez do testcontainers, defina `SGS_TEST_DATABASE_URL` com o superusuário de um servidor descartável: os testes criam e apagam bancos nele.
+
+## Disciplina de Banco de Dados (spec 011)
+Os objetos de banco são SQL escrito à mão e versionado ([ADR-0009](docs/adr/0009-sql-explicito-modulos-disciplina.md)): um arquivo por objeto, com um cabeçalho que explica objetivo, justificativa, quem usa e requisito. A aplicação executa o texto desses arquivos, sem cópia. Requisitos e decisões: [specs/011-recursos-banco-dados/](specs/011-recursos-banco-dados/).
+
+**Arquivo único para a entrega:** `make sql-bd` gera `build/sql-bd.sql` (fora do Git) sem precisar de banco: primeiro a criação, na ordem das migrações (`alembic upgrade head --sql`, inclusive as revisões 0001 a 0003, escritas em Python), depois as consultas da aplicação, cada uma com o caminho do arquivo. No Windows, o alvo já define `PYTHONUTF8=1`, para os acentos dos cabeçalhos.
+
+### Onde está cada objeto
+| Objeto | Arquivo | Teste de integração |
+|---|---|---|
+| Tabelas do cadastro (`districts`, `technical_areas`, `unit_types`, `equipment_types`, `service_types`, `health_units`, `equipments`, `services`) e FKs com `RESTRICT`, `SET NULL` e `CASCADE` | `migrations/sql/0006/06_*` a `17_*` | `registry/test_integridade.py`, `registry/test_schema_registry.py` |
+| `fn_normalize_name` (função) e os índices `ix_health_units_*` | `migrations/sql/0006/03_*`, `13_*` a `15_*` | `registry/test_normalizacao.py` |
+| `sgs_owner` (papel dono, sem login) e privilégios padrão | `migrations/sql/0011_03/01_*` a `05_*` | `db/test_privilegios.py` |
+| `ix_audit_log_entity`, `ix_services_unit_id` (índices, com o plano no cabeçalho) | `migrations/sql/0011_03/06_*`, `07_*` | `db/test_privilegios.py`, `db/test_indices.py` (`-m slow`) |
+| `fn_registration_status` (função com estrutura condicional) | `migrations/sql/0011_03/08_*` | `registry/test_situacao_cadastral.py` |
+| `vw_unit_inventory`, `vw_unit_history` (views) | `migrations/sql/0011_04/` | `db/test_views.py` |
+| `trg_health_units_version` (trigger de versão) | `migrations/sql/0011_05/` | `registry/test_versao_trigger.py` |
+| `sp_deactivate_unit` (procedimento) | `migrations/sql/0011_06/` | `registry/test_sp_deactivate_unit.py`, `registry/test_desativar.py` |
+| `db_change_log` (particionada), `ix_db_change_log_occurred_at`, `trg_registry_change_log` (trigger de log) | `migrations/sql/0011_07/` | `audit/test_log_banco.py`, `audit/test_log_banco_privilegios.py`, `audit/test_particoes.py` |
+| `sp_ensure_monthly_partitions` (procedimento com cursor) | `migrations/sql/0011_08/` | `audit/test_particoes.py`, `tools/test_sgs_admin_particoes.py` |
+| Consultas do dashboard (anti join, full outer join, subconsulta escalar no `HAVING`, `EXISTS`, inventário) | `src/modules/dashboard/infrastructure/sql/` | `dashboard/test_consultas_qualidade.py`, `dashboard/test_inventario.py` |
+| Consultas do histórico, do log do banco e das partições | `src/modules/audit/infrastructure/sql/` | `audit/test_historico_unidade.py`, `audit/test_log_banco_api.py`, `audit/test_particoes_api.py` |
+| Consultas do cadastro | `src/modules/registry/infrastructure/sql/` | testes de `registry/` |
+
+Os testes ficam em `tests/integration/`. `tests/architecture/test_sql_documentado.py` confere os cabeçalhos, os prefixos de nome (`ix_`, `vw_`, `fn_`, `sp_`, `trg_`), o fragmento de escopo em toda consulta do dashboard sobre o cadastro e que cada objeto da 0011 aparece num teste de integração.
+
+### 30 tuplas por tabela
+- **Tabelas de domínio fechado** ficam com menos de 30 linhas, de propósito (decisão U4 da 011): `districts` (8, os distritos sanitários do Recife), `technical_areas` (4), `unit_types` (7, os tipos de Saúde Mental do escopo mais USF e Policlínica), `equipment_types` (3), `service_types` (4), `roles` (7, os papéis da arquitetura) e `permissions` (17). São listas da Secretaria, não massa de teste: inventar linhas falsearia o domínio. `role_permissions` (a matriz) tem 51. Estão na migração 0006 (`migrations/sql/0006/18_*` a `22_*`) e na 0003.
+- **Tabelas de negócio** (`users`, `health_units`, `equipments`, `services` e as trilhas) recebem 30 ou mais linhas pela massa de demonstração da spec 010 (`sgs-admin seed demo`, R1.2 e R1.4), ainda em rascunho. Até ela existir, o volume aparece só nos testes: `tests/integration/db/test_indices.py` cria 1.000 unidades, 3.000 serviços e a trilha correspondente para a prova dos índices.
+
+### Exclusão lógica e física (decisão U5 da 011)
+- **Unidades:** nunca são apagadas; desativar muda o `status` para `inativa` pelo procedimento `sp_deactivate_unit` (`POST /api/v1/unidades/{id}/desativar`), com auditoria. A FK `ON DELETE RESTRICT` impede apagar unidade com equipamento ou serviço (R9.3).
+- **Referências** (distritos, áreas técnicas, tipos): exclusão lógica pela coluna `is_active` (`PATCH /api/v1/referencias/...` com `ativo`). Corrigir o código de um tipo de equipamento propaga aos equipamentos pela FK `ON UPDATE CASCADE` (R9.2).
+- **Equipamentos e serviços:** exclusão física. Remover um equipamento mantém os serviços dele, desligados do equipamento e ainda na unidade (`ON DELETE SET NULL`, R9.1). O trigger de log grava cada exclusão em `db_change_log`.
 
 ## CI e proteção da `main`
 O workflow `.github/workflows/ci.yml` roda em todo PR: dependências travadas, ruff, mypy, import-linter, testes com cobertura (PostgreSQL de serviço), contrato OpenAPI, bandit e pip-audit (job `quality`); depois sobe o compose e chama `/health/ready` pelo proxy TLS (job `compose-smoke`).
