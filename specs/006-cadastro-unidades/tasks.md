@@ -43,7 +43,7 @@
   - Código editável com cascata e auditoria; no mesmo PR da 011/T18.
   - Requisitos: R7.1, R7.2, R7.3
   - Pronto quando: `tests/integration/registry/test_referencias.py` passa
-- [ ] T10. Teste de desempenho da busca
+- [x] T10. Teste de desempenho da busca
   - Bloqueada por: T4
   - Requisitos: R2.7
   - Pronto quando: `tests/e2e/test_busca_desempenho.py -m slow` passa
