@@ -107,6 +107,221 @@
         ]
       }
     },
+    "/api/v1/admin/atribuicoes": {
+      "get": {
+        "tags": [
+          "administração de acesso"
+        ],
+        "summary": "Listar atribuições de papel vigentes",
+        "description": "003/R2, R2.3: as atribuições diretas e de grupo não expiradas, na ordem de criação.",
+        "operationId": "listar_api_v1_admin_atribuicoes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Só as deste usuário.",
+              "title": "Usuario Id"
+            },
+            "description": "Só as deste usuário."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 1,
+              "description": "Página, a partir de 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Página, a partir de 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Itens por página (padrão 20, máximo 100).",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Itens por página (padrão 20, máximo 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaOut_AtribuicaoOut_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `papel:assign`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Parâmetro inválido",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "administração de acesso"
+        ],
+        "summary": "Atribuir papel a um usuário",
+        "description": "003/R2.1 a R2.5. O papel vale para o usuário já na próxima requisição (R4.5).",
+        "operationId": "atribuir_api_v1_admin_atribuicoes_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtribuicaoCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtribuicaoOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `papel:assign`, ou atribuição a si mesmo (segregação de funções)",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "409": {
+            "description": "O usuário já tem este papel neste escopo",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, usuário ou papel inexistente, expiração no passado, escopo de nível diferente do exigido pelo papel ou inexistente",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/atribuicoes/{id}": {
+      "delete": {
+        "tags": [
+          "administração de acesso"
+        ],
+        "summary": "Remover atribuição de papel",
+        "description": "003/R2.4, R4.5: a permissão some na próxima requisição do usuário.",
+        "operationId": "remover_api_v1_admin_atribuicoes__id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `papel:assign`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "A atribuição não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "409": {
+            "description": "A atribuição é derivada de grupo do diretório",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Id inválido",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
     "/api/v1/unidades": {
       "get": {
         "tags": [
@@ -2487,6 +2702,115 @@
         "title": "AlteracaoBancoOut",
         "description": "Um registro do log do banco (011/R7.1, R7.7). `via_api` falso é alteração feita fora da\nAPI, por outro usuário de banco ou por superusuário (011/R7.2)."
       },
+      "AtribuicaoCreate": {
+        "properties": {
+          "usuario_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Usuario Id"
+          },
+          "papel": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "pattern": "^[A-Z_]+$",
+            "title": "Papel",
+            "description": "Código do papel."
+          },
+          "escopo": {
+            "$ref": "#/components/schemas/EscopoIn"
+          },
+          "valido_ate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valido Ate",
+            "description": "Expiração da atribuição, com fuso; sem ela, não expira."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "usuario_id",
+          "papel",
+          "escopo"
+        ],
+        "title": "AtribuicaoCreate",
+        "description": "003/R2.1, R2.3: o papel, o usuário, o escopo exigido pelo papel e a expiração opcional."
+      },
+      "AtribuicaoOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "usuario_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Usuario Id"
+          },
+          "papel": {
+            "type": "string",
+            "title": "Papel",
+            "description": "Código do papel."
+          },
+          "escopo": {
+            "$ref": "#/components/schemas/EscopoOut"
+          },
+          "origem": {
+            "type": "string",
+            "enum": [
+              "direta",
+              "grupo"
+            ],
+            "title": "Origem",
+            "description": "Atribuição direta ou derivada de grupo do diretório."
+          },
+          "concedida_por": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Concedida Por",
+            "description": "Quem atribuiu; nulo se derivada de grupo."
+          },
+          "valido_ate": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valido Ate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "usuario_id",
+          "papel",
+          "escopo",
+          "origem",
+          "concedida_por",
+          "valido_ate"
+        ],
+        "title": "AtribuicaoOut"
+      },
       "ColunaOut": {
         "properties": {
           "nome": {
@@ -2839,6 +3163,40 @@
         "title": "EquipamentoOut",
         "description": "Equipamento vinculado à unidade, no detalhe dela (006/R2.5)."
       },
+      "EscopoIn": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "global",
+              "area",
+              "distrito",
+              "unidade"
+            ],
+            "title": "Tipo"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 36,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id",
+            "description": "Id da área técnica, do distrito ou da unidade; nulo se global."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tipo"
+        ],
+        "title": "EscopoIn"
+      },
       "EscopoOut": {
         "properties": {
           "tipo": {
@@ -3156,6 +3514,37 @@
           "tamanho"
         ],
         "title": "PaginaOut[AlteracaoBancoOut]"
+      },
+      "PaginaOut_AtribuicaoOut_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/AtribuicaoOut"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho"
+        ],
+        "title": "PaginaOut[AtribuicaoOut]"
       },
       "PaginaOut_ConciliacaoOut_": {
         "properties": {

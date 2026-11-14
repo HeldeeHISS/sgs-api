@@ -13,40 +13,15 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
 from src.core.problem import PROBLEM_JSON
+from src.modules.access.api.schemas import EscopoOut
 from src.modules.access.application.perfil import Perfil, perfil_do_usuario
-from src.modules.access.domain.authorization import (
-    Area,
-    Distrito,
-    Escopo,
-    Global,
-    PapelAtribuido,
-    Unidade,
-)
+from src.modules.access.domain.authorization import PapelAtribuido
 from src.modules.identity.api.deps import CurrentUser
 
 router = APIRouter(prefix="/api/v1", tags=["perfil"])
 
 _Origem = Literal["direta", "grupo"]
 _ORIGENS: dict[str, _Origem] = {"direct": "direta", "group": "grupo"}
-
-
-class EscopoOut(BaseModel):
-    tipo: Literal["global", "area", "distrito", "unidade"]
-    id: str | None = Field(
-        description="Id da área técnica, do distrito ou da unidade, em texto; nulo se global."
-    )
-
-    @classmethod
-    def de(cls, escopo: Escopo) -> Self:
-        match escopo:
-            case Global():
-                return cls(tipo="global", id=None)
-            case Area(id=id_):
-                return cls(tipo="area", id=str(id_))
-            case Distrito(id=id_):
-                return cls(tipo="distrito", id=str(id_))
-            case Unidade(id=id_):
-                return cls(tipo="unidade", id=str(id_))
 
 
 class PapelOut(BaseModel):
