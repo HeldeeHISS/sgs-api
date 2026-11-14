@@ -142,7 +142,8 @@ async def atualizar_unidade(
     A permissão e o escopo sobre a unidade já foram conferidos pelo `require` da rota (R3.3).
     Levanta `PreconditionFailed` (412) se a unidade não está mais na `versao_esperada`, mudada pela
     API ou fora dela (R3.2; 011/R8.3); `AcessoNegado` (403), apontando os campos, se muda
-    distrito, tipo ou CNES sem escopo global ou na área técnica da unidade (R3.4);
+    distrito, tipo ou CNES sem escopo global ou na área técnica da unidade (R3.4), ou se troca o
+    tipo por um de área técnica fora do escopo do usuário (R1.1);
     `DomainValidationError` (422) se o tipo ou o distrito novo não existe ou está desativado;
     `Conflict` (409) se repete o CNES ou o nome no distrito de outra (R1.3, R1.4); `NotFound`
     (404) se a unidade não existe. Registra `unidade.atualizada` com `{campo, de, para}` de cada
@@ -158,20 +159,24 @@ async def atualizar_unidade(
     mudancas = diff(atual.campos_de_negocio(), enviados)
     if not mudancas:
         return atual
+    valores: dict[str, Any] = {m.campo: m.para for m in mudancas}
+    novos = replace(atual, **valores)
     estruturais = campos_estruturais_alterados(mudancas)
     if estruturais:
         area = await unidades.area_da_unidade(unidade_id)
         if area is None:
             raise NotFound("O recurso pedido não existe.")
-        exigir_na_area(
-            usuario,
-            "unidade:update",
-            area,
-            recurso=Recurso(tipo=ENTIDADE, id=str(unidade_id)),
-            extensoes={"campos": [_CAMPO_DA_API[campo] for campo in estruturais]},
-        )
-    valores: dict[str, Any] = {m.campo: m.para for m in mudancas}
-    novos = replace(atual, **valores)
+        recurso = Recurso(tipo=ENTIDADE, id=str(unidade_id))
+        extensoes = {"campos": [_CAMPO_DA_API[campo] for campo in estruturais]}
+        exigir_na_area(usuario, "unidade:update", area, recurso=recurso, extensoes=extensoes)
+        # O tipo novo decide a área para onde a unidade vai: ela também precisa estar no escopo,
+        # como no cadastro (R1.1). Tipo inexistente cai no 422 de `_conferir_referencias`.
+        if "unit_type_id" in estruturais:
+            area_nova = await unidades.area_do_tipo(novos.unit_type_id)
+            if area_nova is not None and area_nova != area:
+                exigir_na_area(
+                    usuario, "unidade:update", area_nova, recurso=recurso, extensoes=extensoes
+                )
     await _conferir_referencias(novos, estruturais, unidades)
     try:
         gravada = await unidades.atualizar(unidade_id, versao_esperada, novos)
