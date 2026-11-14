@@ -1,6 +1,6 @@
 """Repositório do RBAC sobre a sessão SQLAlchemy de quem o usa (SQLAlchemy Core)."""
 
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -33,7 +33,9 @@ from src.modules.access.domain.authorization import (
     Unidade,
     escopo_de,
 )
+from src.modules.access.domain.mapeamentos import MapeamentoDeGrupo
 from src.modules.access.infrastructure.tables import (
+    group_role_mappings,
     permissions,
     role_assignments,
     role_permissions,
@@ -212,6 +214,7 @@ class SqlRepositorioDeAtribuicoes:
                 scope_type=nivel,
                 scope_id=id_do_escopo,
                 origin=atribuicao.origem,
+                group_mapping_id=atribuicao.mapeamento_id,
                 granted_by=atribuicao.concedida_por,
                 valid_until=atribuicao.valido_ate,
             )
@@ -264,6 +267,7 @@ _SELECAO = select(
     role_assignments.c.origin,
     role_assignments.c.granted_by,
     role_assignments.c.valid_until,
+    role_assignments.c.group_mapping_id,
 ).select_from(role_assignments.join(roles, roles.c.id == role_assignments.c.role_id))
 
 
@@ -276,6 +280,7 @@ def _atribuicao(
     origem: str,
     concedida_por: UUID | None,
     valido_ate: datetime | None,
+    mapeamento_id: UUID | None,
 ) -> Atribuicao:
     return Atribuicao(
         id=id_,
@@ -285,4 +290,126 @@ def _atribuicao(
         origem=origem,
         concedida_por=concedida_por,
         valido_ate=valido_ate,
+        mapeamento_id=mapeamento_id,
+    )
+
+
+class SqlRepositorioDeMapeamentos:
+    """`RepositorioDeMapeamentos` (003/R3) sobre `group_role_mappings` e `role_assignments`."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def ha_mapeamento(self, grupo_id: UUID, papel: str, escopo: Escopo) -> bool:
+        nivel, id_do_escopo = colunas_do_escopo(escopo)
+        return bool(
+            await self._session.scalar(
+                select(
+                    exists().where(
+                        (group_role_mappings.c.group_id == grupo_id)
+                        & (group_role_mappings.c.role_id == _id_do_papel(papel))
+                        & (group_role_mappings.c.scope_type == nivel)
+                        & group_role_mappings.c.scope_id.is_not_distinct_from(id_do_escopo)
+                    )
+                )
+            )
+        )
+
+    async def inserir(self, mapeamento: MapeamentoDeGrupo) -> None:
+        nivel, id_do_escopo = colunas_do_escopo(mapeamento.escopo)
+        await self._session.execute(
+            insert(group_role_mappings).values(
+                id=mapeamento.id,
+                group_id=mapeamento.grupo_id,
+                role_id=_id_do_papel(mapeamento.papel),
+                scope_type=nivel,
+                scope_id=id_do_escopo,
+                created_by=mapeamento.criado_por,
+            )
+        )
+
+    async def obter(self, mapeamento_id: UUID) -> MapeamentoDeGrupo | None:
+        resultado = await self._session.execute(
+            _SELECAO_DE_MAPEAMENTO.where(group_role_mappings.c.id == mapeamento_id)
+        )
+        linha = resultado.one_or_none()
+        return None if linha is None else _mapeamento(*linha)
+
+    async def remover(self, mapeamento_id: UUID) -> None:
+        await self._session.execute(
+            delete(group_role_mappings).where(group_role_mappings.c.id == mapeamento_id)
+        )
+
+    async def listar(
+        self, *, deslocamento: int, limite: int
+    ) -> tuple[Sequence[MapeamentoDeGrupo], int]:
+        total = await self._session.scalar(select(func.count()).select_from(group_role_mappings))
+        resultado = await self._session.execute(
+            _SELECAO_DE_MAPEAMENTO.order_by(group_role_mappings.c.id)
+            .offset(deslocamento)
+            .limit(limite)
+        )
+        return [_mapeamento(*linha) for linha in resultado.all()], int(total or 0)
+
+    async def dos_grupos(self, grupos: Collection[UUID]) -> Sequence[MapeamentoDeGrupo]:
+        if not grupos:
+            return []
+        resultado = await self._session.execute(
+            _SELECAO_DE_MAPEAMENTO.where(group_role_mappings.c.group_id.in_(list(grupos)))
+        )
+        return [_mapeamento(*linha) for linha in resultado.all()]
+
+    async def derivadas_do_usuario(self, usuario_id: UUID) -> Sequence[Atribuicao]:
+        resultado = await self._session.execute(
+            _SELECAO.where(
+                role_assignments.c.user_id == usuario_id, role_assignments.c.origin == "group"
+            ).order_by(role_assignments.c.id)
+        )
+        return [_atribuicao(*linha) for linha in resultado.all()]
+
+    async def derivadas_do_mapeamento(self, mapeamento_id: UUID) -> Sequence[Atribuicao]:
+        resultado = await self._session.execute(
+            _SELECAO.where(role_assignments.c.group_mapping_id == mapeamento_id).order_by(
+                role_assignments.c.id
+            )
+        )
+        return [_atribuicao(*linha) for linha in resultado.all()]
+
+
+class SemMembrosDeGrupo:
+    """`MembrosDeGrupo` até a spec 004 criar `groups` e `user_groups` (004/T1): nenhum grupo tem
+    membros, então um mapeamento novo não atribui nada até a sincronização do diretório chamar o
+    recálculo (003/R3.2). A 004/T1 troca esta classe pela leitura de `user_groups`."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def membros_ativos(self, grupo_id: UUID) -> frozenset[UUID]:
+        return frozenset()
+
+
+_SELECAO_DE_MAPEAMENTO = select(
+    group_role_mappings.c.id,
+    group_role_mappings.c.group_id,
+    roles.c.code,
+    group_role_mappings.c.scope_type,
+    group_role_mappings.c.scope_id,
+    group_role_mappings.c.created_by,
+).select_from(group_role_mappings.join(roles, roles.c.id == group_role_mappings.c.role_id))
+
+
+def _mapeamento(
+    id_: UUID,
+    grupo: UUID,
+    papel: str,
+    nivel: str,
+    id_do_escopo: str | None,
+    criado_por: UUID,
+) -> MapeamentoDeGrupo:
+    return MapeamentoDeGrupo(
+        id=id_,
+        grupo_id=grupo,
+        papel=papel,
+        escopo=escopo_de(nivel, id_do_escopo),
+        criado_por=criado_por,
     )

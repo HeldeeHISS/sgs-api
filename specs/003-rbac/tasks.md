@@ -34,7 +34,7 @@
   - Bloqueada por: T4
   - Requisitos: R2.1–R2.5
   - Pronto quando: `tests/integration/access/test_admin_atribuicoes.py` passa
-- [ ] T8. Mapeamentos grupo→papel e recálculo de atribuições derivadas
+- [x] T8. Mapeamentos grupo→papel e recálculo de atribuições derivadas
   - Bloqueada por: T7
   - Requisitos: R3.1–R3.3
   - Pronto quando: `tests/integration/access/test_mapeamento_grupos.py` passa
