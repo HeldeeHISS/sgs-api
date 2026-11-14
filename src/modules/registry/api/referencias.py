@@ -7,12 +7,12 @@ de um tipo de equipamento leva o código novo aos equipamentos (006/R7.3, 011/R9
 """
 
 from dataclasses import asdict
-from typing import Annotated, Any, Self, cast
+from typing import Annotated, Self, cast
 
 from fastapi import APIRouter, Depends, Path, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from src.core.problem import PROBLEM_JSON
+from src.core.problem import problema
 from src.modules.access.api.deps import (
     SessaoDeNegocio,
     UsuarioAtual,
@@ -117,10 +117,6 @@ class TipoUnidadeOut(ReferenciaOut):
     area_tecnica_id: int
 
 
-def _problema(descricao: str) -> dict[str, Any]:
-    return {"description": descricao, "content": {PROBLEM_JSON: {}}}
-
-
 def _rotas(
     caminho: str,
     tipo: TipoDeReferencia,
@@ -136,7 +132,7 @@ def _rotas(
         f"/{caminho}",
         summary=f"Listar {rotulo}",
         response_model=list[out],  # type: ignore[valid-type]
-        responses={401: _problema("Sem access token válido")},
+        responses={401: problema("Sem access token válido")},
     )
     async def listar(
         request: Request, _usuario: CurrentUser, sessao: SessaoDeNegocio
@@ -153,10 +149,10 @@ def _rotas(
         summary=f"Incluir item em {rotulo}",
         response_model=out,
         responses={
-            401: _problema("Sem access token válido"),
-            403: _problema(f"Sem `{PERMISSAO}`"),
-            409: _problema("Já existe item com este código"),
-            422: _problema("Campos inválidos, ou área técnica inexistente ou desativada"),
+            401: problema("Sem access token válido"),
+            403: problema(f"Sem `{PERMISSAO}`"),
+            409: problema("Já existe item com este código"),
+            422: problema("Campos inválidos, ou área técnica inexistente ou desativada"),
         },
     )
     async def criar(
@@ -181,11 +177,11 @@ def _rotas(
         summary=f"Alterar ou desativar item de {rotulo}",
         response_model=out,
         responses={
-            401: _problema("Sem access token válido"),
-            403: _problema(f"Sem `{PERMISSAO}`"),
-            404: _problema("O item não existe"),
-            409: _problema("Já existe item com este código"),
-            422: _problema("Campos inválidos, ou área técnica inexistente ou desativada"),
+            401: problema("Sem access token válido"),
+            403: problema(f"Sem `{PERMISSAO}`"),
+            404: problema("O item não existe"),
+            409: problema("Já existe item com este código"),
+            422: problema("Campos inválidos, ou área técnica inexistente ou desativada"),
         },
     )
     async def alterar(

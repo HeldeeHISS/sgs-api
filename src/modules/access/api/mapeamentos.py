@@ -1,6 +1,6 @@
 """Rotas de mapeamento de grupo do diretório para papel (spec 003, R3; design § Rotas)."""
 
-from typing import Annotated, Any, Self
+from typing import Annotated, Self
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, Response
@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from src.core.ids import uuid7
 from src.core.paginacao import TAMANHO_PADRAO, NumeroDaPagina, PaginaOut, TamanhoDaPagina
-from src.core.problem import PROBLEM_JSON
+from src.core.problem import problema
 from src.modules.access.api.deps import (
     SessaoDeNegocio,
     UsuarioAtual,
@@ -26,10 +26,6 @@ from src.modules.access.application.mapeamentos import (
 )
 
 router = APIRouter(prefix="/api/v1/admin", tags=["administração de acesso"])
-
-
-def _problema(descricao: str) -> dict[str, Any]:
-    return {"description": descricao, "content": {PROBLEM_JSON: {}}}
 
 
 class MapeamentoCreate(BaseModel):
@@ -66,9 +62,9 @@ class MapeamentoOut(BaseModel):
     "/mapeamentos-grupo",
     summary="Listar mapeamentos grupo→papel",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `papel:assign`"),
-        422: _problema("Parâmetro inválido"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `papel:assign`"),
+        422: problema("Parâmetro inválido"),
     },
 )
 async def listar(
@@ -97,10 +93,10 @@ async def listar(
     status_code=201,
     summary="Mapear grupo do diretório para papel",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `papel:assign`, ou mapeamento de grupo de que se é membro"),
-        409: _problema("O grupo já está mapeado para este papel neste escopo"),
-        422: _problema(
+        401: problema("Sem access token válido"),
+        403: problema("Sem `papel:assign`, ou mapeamento de grupo de que se é membro"),
+        409: problema("O grupo já está mapeado para este papel neste escopo"),
+        422: problema(
             "Campos inválidos, papel inexistente, escopo de nível diferente do exigido pelo "
             "papel ou inexistente"
         ),
@@ -142,10 +138,10 @@ async def criar(
     status_code=204,
     summary="Remover mapeamento grupo→papel",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `papel:assign`"),
-        404: _problema("O mapeamento não existe"),
-        422: _problema("Id inválido"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `papel:assign`"),
+        404: problema("O mapeamento não existe"),
+        422: problema("Id inválido"),
     },
 )
 async def remover(

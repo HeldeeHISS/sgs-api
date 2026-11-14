@@ -4,13 +4,13 @@
 (011/R7.8) e levanta `AcessoNegado`, que a `SessaoDeNegocio` audita. Nada é gravado.
 """
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import AwareDatetime
 
 from src.core.paginacao import TAMANHO_PADRAO, NumeroDaPagina, PaginaOut, TamanhoDaPagina
-from src.core.problem import PROBLEM_JSON
+from src.core.problem import problema
 from src.modules.access.api.deps import SessaoDeNegocio, UsuarioAtual, require
 from src.modules.audit.api.schemas import AlteracaoBancoOut, ParticaoOut
 from src.modules.audit.application import log_banco
@@ -20,11 +20,6 @@ from src.modules.audit.application.log_banco import (
     Pagina,
     TabelaDoCadastro,
 )
-
-
-def _problema(descricao: str) -> dict[str, Any]:
-    """Resposta de erro em problem+json (spec 001), para o contrato."""
-    return {"description": descricao, "content": {PROBLEM_JSON: {}}}
 
 
 def _filtros(
@@ -56,8 +51,8 @@ router = APIRouter(
     prefix="/api/v1/auditoria/banco",
     tags=["auditoria"],
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `auditoria:read` em escopo global"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `auditoria:read` em escopo global"),
     },
 )
 
@@ -67,7 +62,7 @@ Auditor = Annotated[UsuarioAtual, Depends(require(log_banco.PERMISSAO))]
 @router.get(
     "",
     summary="Log do banco: alterações do cadastro registradas pelo PostgreSQL",
-    responses={422: _problema("Filtro ou paginação mal formados")},
+    responses={422: problema("Filtro ou paginação mal formados")},
 )
 async def listar(
     request: Request,
