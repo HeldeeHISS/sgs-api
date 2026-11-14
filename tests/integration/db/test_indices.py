@@ -36,10 +36,8 @@ SQL_DOS_INDICES = {
     "ix_services_unit_id": RAIZ / "migrations/sql/0011_03/07_ix_services_unit_id.sql",
 }
 
-# Serviços de uma unidade, como o detalhe da unidade os lista (006, 011/R1.2).
-SERVICOS_DA_UNIDADE = text(
-    "SELECT id, name, in_cnes, status FROM services WHERE unit_id = :unit_id ORDER BY name"
-)
+# Serviços de uma unidade, como a rota de serviços da unidade os lista (006/T8, 011/R1.2).
+SERVICOS_DA_UNIDADE = RAIZ / "src/modules/registry/infrastructure/sql/services_by_unit.sql"
 
 
 @dataclass(frozen=True)
@@ -133,7 +131,9 @@ async def test_historico_de_uma_unidade_usa_ix_audit_log_entity(volume: Volume) 
 
 async def test_servicos_de_uma_unidade_usam_ix_services_unit_id(volume: Volume) -> None:
     """011/R1.2, R1.3: com volume, os serviços de uma unidade são achados pelo índice."""
-    plano = await _plano(volume.banco, SERVICOS_DA_UNIDADE.text, {"unit_id": volume.unidade})
+    plano = await _plano(
+        volume.banco, consulta(SERVICOS_DA_UNIDADE).text, {"unit_id": volume.unidade}
+    )
 
     assert "ix_services_unit_id" in plano, plano
     assert "Seq Scan on services" not in plano, plano

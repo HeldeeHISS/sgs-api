@@ -22,6 +22,7 @@ from src.modules.registry.domain.referencia import (
     Referencia,
     TipoDeReferencia,
 )
+from src.modules.registry.domain.servico import DadosDoServico, Servico
 from src.modules.registry.domain.unidade import DadosDaUnidade, Desativacao, Unidade
 
 
@@ -162,4 +163,38 @@ class RepositorioDeEquipamentos(Protocol):
     async def remover(self, id_: UUID) -> bool:
         """Apaga o equipamento (exclusão física, decisão U5 da 011); os serviços dele ficam na
         unidade, sem equipamento (011/R9.1). `False` se ele não existe."""
+        ...
+
+
+class RepositorioDeServicos(Protocol):
+    async def tipo_ativo(self, tipo_id: int) -> bool:
+        """Se o tipo de serviço com esse id existe e está ativo."""
+        ...
+
+    async def equipamento_na_unidade(self, equipamento_id: UUID, unit_id: UUID | None) -> bool:
+        """Se o equipamento existe e é da unidade; com `unit_id` nulo, se é sem unidade."""
+        ...
+
+    async def da_unidade(self, unit_id: UUID) -> list[Servico]:
+        """Os serviços da unidade, pelo id da unidade (006/R6.4)."""
+        ...
+
+    async def soltos(self) -> list[Servico]:
+        """Os serviços sem unidade (006/R6.2)."""
+        ...
+
+    async def ler(self, id_: UUID) -> Servico | None:
+        """O serviço como está no banco; `None` se ele não existe."""
+        ...
+
+    async def inserir(self, id_: UUID, unit_id: UUID | None, dados: DadosDoServico) -> Servico:
+        """Grava o serviço novo, da unidade ou solto, e o devolve como ficou."""
+        ...
+
+    async def atualizar(self, id_: UUID, dados: DadosDoServico) -> Servico | None:
+        """Grava os dados no serviço e o devolve como ficou; `None` se ele não existe."""
+        ...
+
+    async def remover(self, id_: UUID) -> bool:
+        """Apaga o serviço (exclusão física, decisão U5 da 011). `False` se ele não existe."""
         ...
