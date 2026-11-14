@@ -21,7 +21,9 @@ from src.core.security_headers import SecurityHeadersMiddleware
 from src.modules.access.api import rotas as acesso
 from src.modules.access.application.permissoes import ResolvedorDePermissoes
 from src.modules.access.infrastructure.repository import (
+    SemMembrosDeGrupo,
     SqlRepositorioDeAtribuicoes,
+    SqlRepositorioDeMapeamentos,
     SqlRepositorioDePermissoes,
     SqlResolvedorDeUnidade,
 )
@@ -104,6 +106,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.limite_de_login = LimiteDeRequisicoes("10/minute")
     app.state.repositorio_de_permissoes = SqlRepositorioDePermissoes
     app.state.repositorio_de_atribuicoes = SqlRepositorioDeAtribuicoes
+    app.state.repositorio_de_mapeamentos = SqlRepositorioDeMapeamentos
+    # Membros dos grupos do diretório: sem `user_groups` até a 004/T1; a 004/T4 troca pela
+    # leitura real (003/T8, Perguntas em aberto).
+    app.state.membros_de_grupo = SemMembrosDeGrupo
     app.state.auditoria = SqlAuditStore
     app.state.consultas_auditoria = SqlConsultasDeAuditoria
     app.state.repositorio_de_unidades = SqlRepositorioDeUnidades

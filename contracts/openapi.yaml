@@ -675,6 +675,168 @@
         }
       }
     },
+    "/api/v1/admin/mapeamentos-grupo": {
+      "get": {
+        "tags": [
+          "acesso"
+        ],
+        "summary": "Mapeamentos grupo→papel",
+        "description": "003/R3: os mapeamentos, na ordem de criação.",
+        "operationId": "listar_mapeamentos_api_v1_admin_mapeamentos_grupo_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MapeamentoOut"
+                  },
+                  "type": "array",
+                  "title": "Response Listar Mapeamentos Api V1 Admin Mapeamentos Grupo Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `papel:assign`, ou atribuição a si mesmo (segregação de funções)",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "acesso"
+        ],
+        "summary": "Mapear grupo do diretório para papel",
+        "description": "003/R3.1: os membros ativos do grupo recebem o papel (origem `group`), que vale na\npróxima requisição deles (R4.5); audita `mapeamento.criado` e cada `papel.atribuido`.",
+        "operationId": "mapear_api_v1_admin_mapeamentos_grupo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MapeamentoIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapeamentoOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `papel:assign`, ou mapeamento de grupo de que se é membro (segregação de funções)",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "409": {
+            "description": "O grupo já está mapeado para este papel neste escopo",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Papel ou escopo inválidos",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/mapeamentos-grupo/{id_}": {
+      "delete": {
+        "tags": [
+          "acesso"
+        ],
+        "summary": "Remover mapeamento grupo→papel",
+        "description": "003/R3.2, R3.3: saem as atribuições derivadas do mapeamento (cada uma auditada como\n`papel.removido`); as diretas ficam. Audita `mapeamento.removido`.",
+        "operationId": "remover_mapeamento_api_v1_admin_mapeamentos_grupo__id___delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id "
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `papel:assign`, ou atribuição a si mesmo (segregação de funções)",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "Mapeamento inexistente",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/unidades": {
       "get": {
         "tags": [
@@ -5839,6 +6001,101 @@
           "mfa_enrollment_required"
         ],
         "title": "LoginOut"
+      },
+      "MapeamentoIn": {
+        "properties": {
+          "grupo_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Grupo Id",
+            "description": "Id do grupo do diretório (spec 004)."
+          },
+          "papel": {
+            "type": "string",
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Papel"
+          },
+          "escopo_tipo": {
+            "type": "string",
+            "enum": [
+              "global",
+              "area",
+              "distrito",
+              "unidade"
+            ],
+            "title": "Escopo Tipo"
+          },
+          "escopo_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 36
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escopo Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "grupo_id",
+          "papel",
+          "escopo_tipo"
+        ],
+        "title": "MapeamentoIn",
+        "description": "003/R3.1: o grupo do diretório, o papel e o escopo exigido pelo papel (R2.1)."
+      },
+      "MapeamentoOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "grupo_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Grupo Id"
+          },
+          "papel": {
+            "type": "string",
+            "title": "Papel"
+          },
+          "escopo_tipo": {
+            "type": "string",
+            "title": "Escopo Tipo"
+          },
+          "escopo_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escopo Id"
+          },
+          "criado_por": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Criado Por"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "grupo_id",
+          "papel",
+          "escopo_tipo",
+          "escopo_id",
+          "criado_por"
+        ],
+        "title": "MapeamentoOut"
       },
       "MeOut": {
         "properties": {

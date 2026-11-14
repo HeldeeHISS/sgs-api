@@ -12,6 +12,7 @@ import httpx
 from fastapi import FastAPI
 from sqlalchemy import text
 
+from src.core.ids import uuid7
 from tests.integration.acesso import GLOBAL, Sessoes, bearer, id_pelo_codigo, logado
 from tests.integration.audit.cobertura import EXCECOES, MAPA, rotas_de_escrita
 from tests.integration.identity.autenticacao import codigo, login, segredo_da_uri, usuario_local
@@ -185,6 +186,20 @@ async def test_rota_grava_evento_completo(
         lambda: cliente.delete(f"/api/v1/admin/atribuicoes/{ctx['atribuicao']}", headers=admin),
     )
     passo(
+        "POST /api/v1/admin/mapeamentos-grupo",
+        lambda: cliente.post(
+            "/api/v1/admin/mapeamentos-grupo",
+            json={"grupo_id": str(uuid7()), "papel": "AUDITOR", "escopo_tipo": "global"},
+            headers=admin,
+        ),
+    )
+    passo(
+        "DELETE /api/v1/admin/mapeamentos-grupo/{id_}",
+        lambda: cliente.delete(
+            f"/api/v1/admin/mapeamentos-grupo/{ctx['mapeamento']}", headers=admin
+        ),
+    )
+    passo(
         "POST /api/v1/auth/login",
         lambda: cliente.post(
             "/api/v1/auth/login",
@@ -274,6 +289,7 @@ def _guardar_ids(chave: str, resposta: httpx.Response, ctx: dict[str, Any]) -> N
         "POST /api/v1/servicos": "servico_solto",
         "POST /api/v1/referencias/{tipo}": "referencia",
         "POST /api/v1/admin/atribuicoes": "atribuicao",
+        "POST /api/v1/admin/mapeamentos-grupo": "mapeamento",
     }.get(chave)
     if destino is not None:
         ctx[destino] = corpo["id"]
