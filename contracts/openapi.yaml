@@ -1419,6 +1419,395 @@
         ]
       }
     },
+    "/api/v1/unidades/{id}/servicos": {
+      "get": {
+        "tags": [
+          "servicos"
+        ],
+        "summary": "Listar serviços da unidade",
+        "description": "006/R6.1, R6.3: os serviços da unidade, pela ordem de cadastro, ligados a ela pelo id\n(R6.4).",
+        "operationId": "listar_api_v1_unidades__id__servicos_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/src__modules__registry__api__servicos__ServicoOut"
+                  },
+                  "title": "Response Listar Api V1 Unidades  Id  Servicos Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `unidade:read` no escopo da unidade",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "A unidade não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "servicos"
+        ],
+        "summary": "Adicionar serviço à unidade",
+        "description": "006/R6.1, R6.3: grava o serviço na unidade e audita `unidade.servico_criado`.",
+        "operationId": "adicionar_api_v1_unidades__id__servicos_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServicoCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__modules__registry__api__servicos__ServicoOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `servico:write` no escopo da unidade",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "A unidade não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, tipo de serviço inexistente ou desativado, ou equipamento de outra unidade",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/unidades/{id}/servicos/{sid}": {
+      "patch": {
+        "tags": [
+          "servicos"
+        ],
+        "summary": "Alterar serviço da unidade",
+        "description": "006/R6.1, R6.3: aplica só os campos enviados e audita `unidade.servico_atualizado` com o\nque mudou; sem mudança, responde igual, sem alterar nem auditar.",
+        "operationId": "alterar_api_v1_unidades__id__servicos__sid__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Sid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServicoUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__modules__registry__api__servicos__ServicoOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `servico:write` no escopo da unidade",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "A unidade ou o serviço dela não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, tipo de serviço inexistente ou desativado, ou equipamento de outra unidade",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "servicos"
+        ],
+        "summary": "Remover serviço da unidade",
+        "description": "006/R6.1: apaga o serviço e audita `unidade.servico_removido`.",
+        "operationId": "remover_api_v1_unidades__id__servicos__sid__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Sid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `servico:write` no escopo da unidade",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "A unidade ou o serviço dela não existe",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/servicos": {
+      "get": {
+        "tags": [
+          "servicos"
+        ],
+        "summary": "Listar serviços soltos",
+        "description": "006/R6.2: os serviços sem unidade, pela ordem de cadastro, só para o Gestor de Dados.",
+        "operationId": "listar_soltos__api_v1_servicos_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/src__modules__registry__api__servicos__ServicoOut"
+                  },
+                  "type": "array",
+                  "title": "Response Listar Soltos  Api V1 Servicos Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `servico:write` global",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "servicos"
+        ],
+        "summary": "Cadastrar serviço solto",
+        "description": "006/R6.2: grava o serviço sem unidade, como a Sala de Vacinação do Shopping, e audita\n`servico.criado`.",
+        "operationId": "adicionar_solto_api_v1_servicos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServicoCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/src__modules__registry__api__servicos__ServicoOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `servico:write` global",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Campos inválidos, tipo de serviço inexistente ou desativado, ou equipamento de uma unidade",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/referencias/distritos": {
       "get": {
         "tags": [
@@ -4773,26 +5162,27 @@
         "title": "ReferenciaUpdate",
         "description": "Só os campos enviados mudam; `ativo: false` desativa, `true` reativa. Nulo explícito é\nrecusado: os campos não são opcionais no banco."
       },
-      "ServicoOut": {
+      "ServicoCreate": {
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Id"
-          },
           "nome": {
             "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
             "title": "Nome"
           },
           "tipo_servico_id": {
             "type": "integer",
-            "title": "Tipo Servico Id"
+            "maximum": 32767.0,
+            "minimum": 1.0,
+            "title": "Tipo Servico Id",
+            "description": "Id do tipo de serviço."
           },
           "equipamento_id": {
             "anyOf": [
               {
                 "type": "string",
-                "format": "uuid"
+                "format": "uuid",
+                "description": "Equipamento em que o serviço é ofertado, da mesma unidade."
               },
               {
                 "type": "null"
@@ -4802,24 +5192,105 @@
           },
           "no_cnes": {
             "type": "boolean",
-            "title": "No Cnes"
+            "title": "No Cnes",
+            "description": "Se o serviço consta no CNES.",
+            "default": false
           },
           "status": {
             "type": "string",
+            "enum": [
+              "ativo",
+              "inativo",
+              "em_implantacao"
+            ],
             "title": "Status"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
-          "id",
           "nome",
           "tipo_servico_id",
-          "equipamento_id",
-          "no_cnes",
           "status"
         ],
-        "title": "ServicoOut",
-        "description": "Serviço vinculado à unidade, no detalhe dela (006/R2.5). `no_cnes` diz se ele consta no\nCNES (006/R6.3)."
+        "title": "ServicoCreate",
+        "description": "Serviço novo: nome, tipo e status obrigatórios; sem `no_cnes`, não consta no CNES."
+      },
+      "ServicoUpdate": {
+        "properties": {
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome"
+          },
+          "tipo_servico_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 32767.0,
+                "minimum": 1.0,
+                "description": "Id do tipo de serviço."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo Servico Id"
+          },
+          "equipamento_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "description": "Equipamento em que o serviço é ofertado, da mesma unidade."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equipamento Id"
+          },
+          "no_cnes": {
+            "anyOf": [
+              {
+                "type": "boolean",
+                "description": "Se o serviço consta no CNES."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No Cnes"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "ativo",
+                  "inativo",
+                  "em_implantacao"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ServicoUpdate",
+        "description": "Alteração parcial: só os campos enviados mudam. `equipamento_id` nulo desliga o serviço\ndo equipamento; os outros podem faltar, mas não vir nulos. A unidade do serviço não muda\npor aqui."
       },
       "SituacaoCadastral": {
         "type": "string",
@@ -5276,7 +5747,7 @@
           },
           "servicos": {
             "items": {
-              "$ref": "#/components/schemas/ServicoOut"
+              "$ref": "#/components/schemas/src__modules__registry__api__schemas__ServicoOut"
             },
             "type": "array",
             "title": "Servicos"
@@ -5895,6 +6366,127 @@
         ],
         "title": "EquipamentoOut",
         "description": "Equipamento vinculado à unidade, no detalhe dela (006/R2.5)."
+      },
+      "src__modules__registry__api__schemas__ServicoOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "tipo_servico_id": {
+            "type": "integer",
+            "title": "Tipo Servico Id"
+          },
+          "equipamento_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equipamento Id"
+          },
+          "no_cnes": {
+            "type": "boolean",
+            "title": "No Cnes"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "tipo_servico_id",
+          "equipamento_id",
+          "no_cnes",
+          "status"
+        ],
+        "title": "ServicoOut",
+        "description": "Serviço vinculado à unidade, no detalhe dela (006/R2.5). `no_cnes` diz se ele consta no\nCNES (006/R6.3)."
+      },
+      "src__modules__registry__api__servicos__ServicoOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "unidade_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unidade Id"
+          },
+          "equipamento_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equipamento Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "tipo_servico_id": {
+            "type": "integer",
+            "title": "Tipo Servico Id"
+          },
+          "no_cnes": {
+            "type": "boolean",
+            "title": "No Cnes"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Atualizado Em"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "unidade_id",
+          "equipamento_id",
+          "nome",
+          "tipo_servico_id",
+          "no_cnes",
+          "status",
+          "criado_em",
+          "atualizado_em"
+        ],
+        "title": "ServicoOut",
+        "description": "O serviço; `unidade_id` nulo é o serviço solto (006/R6.2). `no_cnes` diz se ele consta no\nCNES (R6.3)."
       }
     },
     "securitySchemes": {
