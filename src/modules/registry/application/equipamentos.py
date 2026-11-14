@@ -19,18 +19,15 @@ from dataclasses import replace
 from typing import Any
 from uuid import UUID
 
-from src.core.errors import DomainValidationError, FieldError, NotFound
-from src.modules.access.application.autorizacao import (
-    AcessoNegado,
-    UsuarioAtual,
-    escopo_de_leitura,
-)
-from src.modules.audit.application.registrar import (
-    Ator,
-    AuditStore,
-    Entidade,
-    Mudanca,
-    registrar,
+from src.core.errors import NotFound
+from src.modules.access.application.autorizacao import UsuarioAtual
+from src.modules.audit.application.registrar import Ator, AuditStore, Mudanca
+from src.modules.registry.application.vinculados import (
+    NAO_EXISTE,
+    Vinculado,
+    da_unidade,
+    exigir_global,
+    invalido,
 )
 from src.modules.registry.domain.equipamento import (
     CAMPOS_DO_EQUIPAMENTO,
@@ -54,16 +51,16 @@ __all__ = [
 PERMISSAO = "equipamento:write"
 
 # Coluna → nome da API, para a auditoria e o 422.
-_CAMPO_DA_API = {
-    "name": "nome",
-    "cnes": "cnes",
-    "equipment_type_code": "tipo_equipamento_codigo",
-    "quantity": "quantidade",
-    "status": "status",
-}
-
-_PREFIXO = "equipamento."
-_NAO_EXISTE = "O recurso pedido não existe."
+_EQUIPAMENTO = Vinculado(
+    substantivo="equipamento",
+    campo_da_api={
+        "name": "nome",
+        "cnes": "cnes",
+        "equipment_type_code": "tipo_equipamento_codigo",
+        "quantity": "quantidade",
+        "status": "status",
+    },
+)
 
 
 async def listar_da_unidade(
@@ -78,7 +75,7 @@ async def listar_sem_unidade(
     *, usuario: UsuarioAtual, equipamentos: RepositorioDeEquipamentos
 ) -> list[Equipamento]:
     """006/R5.2: os equipamentos sem unidade, só para quem tem `equipamento:write` global."""
-    _exigir_global(usuario)
+    exigir_global(usuario, PERMISSAO)
     return await equipamentos.sem_unidade()
 
 
@@ -99,7 +96,7 @@ async def adicionar_equipamento(
     e `DomainValidationError` (422) se o tipo não existe ou está desativado.
     """
     if unidade_id is None:
-        _exigir_global(usuario)
+        exigir_global(usuario, PERMISSAO)
     await _exigir_tipo_ativo(dados.equipment_type_code, equipamentos)
     equipamento = await equipamentos.inserir(novo_id, unidade_id, dados)
     mudancas = [
@@ -107,15 +104,9 @@ async def adicionar_equipamento(
         for campo, valor in equipamento.campos_de_negocio().items()
     ]
     if unidade_id is None:
-        await registrar(
-            auditoria,
-            acao="equipamento.criado",
-            ator=ator,
-            entidade=Entidade(tipo="equipamento", id=str(equipamento.id)),
-            mudancas=_com_nomes_da_api(mudancas),
-        )
+        await _EQUIPAMENTO.auditar_sem_unidade(auditoria, ator, equipamento, mudancas)
     else:
-        await _auditar_na_unidade(auditoria, "criado", ator, equipamento, mudancas)
+        await _EQUIPAMENTO.auditar_na_unidade(auditoria, "criado", ator, equipamento, mudancas)
     return equipamento
 
 
@@ -135,7 +126,7 @@ async def alterar_equipamento(
     Levanta `NotFound` (404) se o equipamento não existe ou não é dessa unidade, e
     `DomainValidationError` (422) se o tipo novo não existe ou está desativado.
     """
-    atual = await _da_unidade(unidade_id, equipamento_id, equipamentos)
+    atual = await da_unidade(equipamentos.ler, unidade_id, equipamento_id)
     enviados = {c: alteracoes[c] for c in CAMPOS_DO_EQUIPAMENTO if c in alteracoes}
     mudancas = diff(atual.campos_de_negocio(), enviados)
     if not mudancas:
@@ -145,8 +136,8 @@ async def alterar_equipamento(
         await _exigir_tipo_ativo(valores["equipment_type_code"], equipamentos)
     gravado = await equipamentos.atualizar(equipamento_id, replace(atual, **valores))
     if gravado is None:
-        raise NotFound(_NAO_EXISTE)
-    await _auditar_na_unidade(
+        raise NotFound(NAO_EXISTE)
+    await _EQUIPAMENTO.auditar_na_unidade(
         auditoria,
         "atualizado",
         ator,
@@ -167,10 +158,10 @@ async def remover_equipamento(
     """Apaga o equipamento da unidade (006/R5.1; exclusão física, decisão U5 da 011) e registra
     `unidade.equipamento_removido` com os campos que ele tinha (R5.3). Os serviços dele ficam na
     unidade (011/R9.1). Levanta `NotFound` (404) se ele não existe ou não é dessa unidade."""
-    atual = await _da_unidade(unidade_id, equipamento_id, equipamentos)
+    atual = await da_unidade(equipamentos.ler, unidade_id, equipamento_id)
     if not await equipamentos.remover(equipamento_id):
-        raise NotFound(_NAO_EXISTE)
-    await _auditar_na_unidade(
+        raise NotFound(NAO_EXISTE)
+    await _EQUIPAMENTO.auditar_na_unidade(
         auditoria,
         "removido",
         ator,
@@ -182,52 +173,6 @@ async def remover_equipamento(
     )
 
 
-def _exigir_global(usuario: UsuarioAtual) -> None:
-    """403 se o usuário não tem `equipamento:write` global (006/R5.2: só o Gestor de Dados)."""
-    if not escopo_de_leitura(usuario, PERMISSAO).global_:
-        raise AcessoNegado(PERMISSAO)
-
-
 async def _exigir_tipo_ativo(codigo: str, equipamentos: RepositorioDeEquipamentos) -> None:
     if not await equipamentos.tipo_ativo(codigo):
-        raise DomainValidationError(
-            "A requisição tem campos inválidos.",
-            errors=[
-                FieldError(
-                    campo="tipo_equipamento_codigo",
-                    mensagem="Tipo de equipamento inexistente ou desativado.",
-                )
-            ],
-        )
-
-
-async def _da_unidade(
-    unidade_id: UUID, equipamento_id: UUID, equipamentos: RepositorioDeEquipamentos
-) -> Equipamento:
-    """O equipamento, se é da unidade da rota; senão, 404, como se não existisse."""
-    equipamento = await equipamentos.ler(equipamento_id)
-    if equipamento is None or equipamento.unit_id != unidade_id:
-        raise NotFound(_NAO_EXISTE)
-    return equipamento
-
-
-def _com_nomes_da_api(mudancas: list[Mudanca], prefixo: str = "") -> list[Mudanca]:
-    return [Mudanca(campo=prefixo + _CAMPO_DA_API[m.campo], de=m.de, para=m.para) for m in mudancas]
-
-
-async def _auditar_na_unidade(
-    auditoria: AuditStore,
-    evento: str,
-    ator: Ator,
-    equipamento: Equipamento,
-    mudancas: list[Mudanca],
-) -> None:
-    """`unidade.equipamento_<evento>` no nível da unidade (006/R5.3)."""
-    await registrar(
-        auditoria,
-        acao=f"unidade.equipamento_{evento}",
-        ator=ator,
-        entidade=Entidade(tipo="unidade", id=str(equipamento.unit_id)),
-        mudancas=_com_nomes_da_api(mudancas, _PREFIXO),
-        metadados={"equipamento_id": str(equipamento.id)},
-    )
+        raise invalido("tipo_equipamento_codigo", "Tipo de equipamento inexistente ou desativado.")
