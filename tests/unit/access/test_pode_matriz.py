@@ -1,8 +1,8 @@
 """`pode()` contra a matriz de papéis e permissões (003/T2).
 
-A matriz é a de docs/architecture/arquitetura-conceitual.md § 4, e o escopo típico de cada papel
-vem do § 2. Cada célula vira um caso: um usuário só com aquele papel, no escopo típico, tenta a
-permissão sem alvo e em quatro unidades.
+A matriz é a de docs/architecture/arquitetura-conceitual.md § 4 (em `tests/fixtures/matriz.py`),
+e o escopo típico de cada papel vem do § 2. Cada célula vira um caso: um usuário só com aquele
+papel, no escopo típico, tenta a permissão sem alvo e em quatro unidades.
 """
 
 from uuid import UUID
@@ -21,39 +21,7 @@ from src.modules.access.domain.authorization import (
     Unidade,
     pode,
 )
-
-PAPEIS = (
-    "ADMIN_TI",
-    "GESTOR_DADOS",
-    "COORD_TECNICO",
-    "TECNICO_DISTRITAL",
-    "GESTOR_UNIDADE",
-    "DIRETORIA",
-    "AUDITOR",
-)
-
-# G = global · A = na sua área técnica · D = no seu distrito · U = na sua unidade
-# - = sem permissão. Colunas na ordem de PAPEIS. O AUDITOR exporta "só auditoria": restrição do
-# tipo de relatório (spec 005), não de escopo.
-MATRIZ: dict[str, tuple[str, ...]] = {
-    "unidade:read":           ("-", "G", "G", "G", "G", "G", "G"),
-    "unidade:create":         ("-", "G", "A", "-", "-", "-", "-"),
-    "unidade:update":         ("-", "G", "A", "D", "U", "-", "-"),
-    "unidade:deactivate":     ("-", "G", "-", "-", "-", "-", "-"),
-    "equipamento:write":      ("-", "G", "A", "D", "U", "-", "-"),
-    "servico:write":          ("-", "G", "A", "D", "U", "-", "-"),
-    "alteracao:propor":       ("-", "G", "A", "D", "U", "-", "-"),
-    "alteracao:validar":      ("-", "G", "A", "-", "-", "-", "-"),
-    "regra_validacao:manage": ("-", "G", "-", "-", "-", "-", "-"),
-    "auditoria:read":         ("-", "G", "A", "D", "U", "-", "G"),
-    "auditoria:read_acessos": ("G", "-", "-", "-", "-", "-", "G"),
-    "dashboard:read":         ("-", "G", "G", "G", "G", "G", "-"),
-    "relatorio:export":       ("-", "G", "A", "-", "-", "G", "G"),
-    "relatorio:download":     ("-", "G", "A", "-", "-", "G", "G"),
-    "usuario:manage":         ("G", "-", "-", "-", "-", "-", "-"),
-    "papel:assign":           ("G", "-", "-", "-", "-", "-", "-"),
-    "diretorio:sync":         ("G", "-", "-", "-", "-", "-", "-"),
-}  # fmt: skip
+from tests.fixtures.matriz import MATRIZ, PAPEIS
 
 SAUDE_MENTAL, APS = 1, 2
 DS_III, DS_V = 3, 5

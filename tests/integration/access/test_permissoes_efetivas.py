@@ -4,7 +4,8 @@ Design da 003 § Resolução de permissões: atribuições ativas (diretas e de 
 juntas com `role_permissions`, cada escopo limitado pelo `max_scope` da permissão no papel, e
 cache por usuário que a versão invalida.
 
-A matriz esperada é a de docs/architecture/arquitetura-conceitual.md § 4, copiada à mão.
+A matriz esperada é a de docs/architecture/arquitetura-conceitual.md § 4, copiada à mão em
+`tests/fixtures/matriz.py`.
 """
 
 from collections.abc import AsyncIterator, Mapping, Sequence
@@ -19,43 +20,12 @@ from src.core.ids import uuid7
 from src.modules.access.application.permissoes import ResolvedorDePermissoes
 from src.modules.access.domain.authorization import Area, Distrito, Escopo, Global, Unidade
 from src.modules.access.infrastructure.repository import SqlRepositorioDePermissoes
+from tests.fixtures.matriz import MATRIZ, PAPEIS
 from tests.integration.postgres import BancoDeTeste, motor
 
 SAUDE_MENTAL = 1
 DS_III = 3
 CAPS_DS_III = UUID("01970000-0000-7000-8000-000000000001")
-
-PAPEIS = (
-    "ADMIN_TI",
-    "GESTOR_DADOS",
-    "COORD_TECNICO",
-    "TECNICO_DISTRITAL",
-    "GESTOR_UNIDADE",
-    "DIRETORIA",
-    "AUDITOR",
-)
-
-# G = global · A = na sua área técnica · D = no seu distrito · U = na sua unidade
-# - = sem permissão. Colunas na ordem de PAPEIS.
-MATRIZ: dict[str, tuple[str, ...]] = {
-    "unidade:read":           ("-", "G", "G", "G", "G", "G", "G"),
-    "unidade:create":         ("-", "G", "A", "-", "-", "-", "-"),
-    "unidade:update":         ("-", "G", "A", "D", "U", "-", "-"),
-    "unidade:deactivate":     ("-", "G", "-", "-", "-", "-", "-"),
-    "equipamento:write":      ("-", "G", "A", "D", "U", "-", "-"),
-    "servico:write":          ("-", "G", "A", "D", "U", "-", "-"),
-    "alteracao:propor":       ("-", "G", "A", "D", "U", "-", "-"),
-    "alteracao:validar":      ("-", "G", "A", "-", "-", "-", "-"),
-    "regra_validacao:manage": ("-", "G", "-", "-", "-", "-", "-"),
-    "auditoria:read":         ("-", "G", "A", "D", "U", "-", "G"),
-    "auditoria:read_acessos": ("G", "-", "-", "-", "-", "-", "G"),
-    "dashboard:read":         ("-", "G", "G", "G", "G", "G", "-"),
-    "relatorio:export":       ("-", "G", "A", "-", "-", "G", "G"),
-    "relatorio:download":     ("-", "G", "A", "-", "-", "G", "G"),
-    "usuario:manage":         ("G", "-", "-", "-", "-", "-", "-"),
-    "papel:assign":           ("G", "-", "-", "-", "-", "-", "-"),
-    "diretorio:sync":         ("G", "-", "-", "-", "-", "-", "-"),
-}  # fmt: skip
 
 # Escopo típico de cada papel (arquitetura § 2), como a atribuição o grava: (scope_type, scope_id).
 ATRIBUICAO_TIPICA: dict[str, tuple[str, str | None]] = {
