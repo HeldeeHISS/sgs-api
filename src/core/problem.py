@@ -16,6 +16,13 @@ from src.core.errors import AppError, DomainValidationError, FieldError
 
 PROBLEM_JSON = "application/problem+json"
 
+
+def problema(descricao: str) -> dict[str, Any]:
+    """Uma resposta de erro em problem+json para o `responses=` da rota, só para o contrato
+    (OpenAPI): a descrição e o tipo de conteúdo."""
+    return {"description": descricao, "content": {PROBLEM_JSON: {}}}
+
+
 _VALIDATION_TYPE = DomainValidationError.type
 _VALIDATION_TITLE = DomainValidationError.title
 

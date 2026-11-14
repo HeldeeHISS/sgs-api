@@ -1,108 +1,26 @@
 """Catálogo de papéis e permissões semeado pela migração 0003_access (003/T1).
 
-A matriz esperada é a de docs/architecture/arquitetura-conceitual.md § 4, copiada à mão: o teste
-confere a migração contra o documento, e não contra ela mesma.
+A matriz esperada é a de docs/architecture/arquitetura-conceitual.md § 4, copiada à mão em
+`tests/fixtures/matriz.py`: o teste confere a migração contra o documento, e não contra ela
+mesma. `relatorio:export` do AUDITOR é "G (só auditoria)": o recorte por tipo de relatório é da
+005.
 """
 
 import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
+from tests.fixtures.matriz import MATRIZ as LINHAS_DA_MATRIZ
+from tests.fixtures.matriz import PAPEIS, escopos_maximos
 from tests.integration.postgres import BancoDeTeste, motor
 
 SEM_PRIVILEGIO = "42501"  # SQLSTATE insufficient_privilege
-G, A, D, U = "global", "area", "distrito", "unidade"
 
-# Uma entrada por célula preenchida da matriz; célula "—" é permissão ausente no papel.
-# `relatorio:export` do AUDITOR é "G (só auditoria)": o recorte por tipo de relatório é da 005.
-MATRIZ: dict[str, dict[str, str]] = {
-    "ADMIN_TI": {
-        "auditoria:read_acessos": G,
-        "usuario:manage": G,
-        "papel:assign": G,
-        "diretorio:sync": G,
-    },
-    "GESTOR_DADOS": {
-        "unidade:read": G,
-        "unidade:create": G,
-        "unidade:update": G,
-        "unidade:deactivate": G,
-        "equipamento:write": G,
-        "servico:write": G,
-        "alteracao:propor": G,
-        "alteracao:validar": G,
-        "regra_validacao:manage": G,
-        "auditoria:read": G,
-        "dashboard:read": G,
-        "relatorio:export": G,
-        "relatorio:download": G,
-    },
-    "COORD_TECNICO": {
-        "unidade:read": G,
-        "unidade:create": A,
-        "unidade:update": A,
-        "equipamento:write": A,
-        "servico:write": A,
-        "alteracao:propor": A,
-        "alteracao:validar": A,
-        "auditoria:read": A,
-        "dashboard:read": G,
-        "relatorio:export": A,
-        "relatorio:download": A,
-    },
-    "TECNICO_DISTRITAL": {
-        "unidade:read": G,
-        "unidade:update": D,
-        "equipamento:write": D,
-        "servico:write": D,
-        "alteracao:propor": D,
-        "auditoria:read": D,
-        "dashboard:read": G,
-    },
-    "GESTOR_UNIDADE": {
-        "unidade:read": G,
-        "unidade:update": U,
-        "equipamento:write": U,
-        "servico:write": U,
-        "alteracao:propor": U,
-        "auditoria:read": U,
-        "dashboard:read": G,
-    },
-    "DIRETORIA": {
-        "unidade:read": G,
-        "dashboard:read": G,
-        "relatorio:export": G,
-        "relatorio:download": G,
-    },
-    "AUDITOR": {
-        "unidade:read": G,
-        "auditoria:read": G,
-        "auditoria:read_acessos": G,
-        "relatorio:export": G,
-        "relatorio:download": G,
-    },
-}
+# Uma entrada por célula preenchida da matriz; célula "-" é permissão ausente no papel.
+MATRIZ: dict[str, dict[str, str]] = {papel: escopos_maximos(papel) for papel in PAPEIS}
 
 # As linhas da matriz, com `equipamento:write` / `servico:write` separadas.
-PERMISSOES = {
-    "unidade:read",
-    "unidade:create",
-    "unidade:update",
-    "unidade:deactivate",
-    "equipamento:write",
-    "servico:write",
-    "alteracao:propor",
-    "alteracao:validar",
-    "regra_validacao:manage",
-    "auditoria:read",
-    "auditoria:read_acessos",
-    "dashboard:read",
-    "relatorio:export",
-    "relatorio:download",
-    "usuario:manage",
-    "papel:assign",
-    "diretorio:sync",
-}
+PERMISSOES = set(LINHAS_DA_MATRIZ)
 
 
 async def test_migracao_cria_os_sete_papeis_de_sistema(banco: BancoDeTeste) -> None:

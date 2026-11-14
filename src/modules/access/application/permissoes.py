@@ -6,7 +6,11 @@ from datetime import UTC, datetime, timedelta
 from types import MappingProxyType
 from uuid import UUID
 
-from src.modules.access.domain.authorization import PermissoesEfetivas, permissoes_efetivas
+from src.modules.access.domain.authorization import (
+    PermissoesEfetivas,
+    papeis_das_concessoes,
+    permissoes_efetivas,
+)
 from src.modules.access.domain.ports import RepositorioDePermissoes
 
 TTL = timedelta(seconds=30)
@@ -19,9 +23,21 @@ def _agora() -> datetime:
 
 
 @dataclass(frozen=True, slots=True)
+class Resolucao:
+    """As permissões efetivas do usuário e os códigos dos papéis vigentes que as dão (estes
+    para a auditoria, `actor_roles`, 008/R1.2)."""
+
+    permissoes: PermissoesEfetivas
+    papeis: tuple[str, ...] = ()
+
+
+SEM_RESOLUCAO = Resolucao(SEM_PERMISSOES)
+
+
+@dataclass(frozen=True, slots=True)
 class _Entrada:
     versao: int
-    permissoes: PermissoesEfetivas
+    resolucao: Resolucao
     expira_em: datetime
 
 
@@ -41,21 +57,25 @@ class ResolvedorDePermissoes:
     async def permissoes_de(
         self, repositorio: RepositorioDePermissoes, usuario_id: UUID
     ) -> PermissoesEfetivas:
+        return (await self.resolver(repositorio, usuario_id)).permissoes
+
+    async def resolver(self, repositorio: RepositorioDePermissoes, usuario_id: UUID) -> Resolucao:
+        """As permissões e os papéis do usuário, do cache ou do banco (mesma regra de validade)."""
         # A versão vem antes das concessões: se uma alteração for confirmada entre as duas
         # leituras, a entrada fica com a versão antiga e a próxima chamada recarrega.
         versao = await repositorio.versao(usuario_id)
         if versao is None:
             self._cache.pop(usuario_id, None)
-            return SEM_PERMISSOES
+            return SEM_RESOLUCAO
         agora = self._relogio()
         entrada = self._cache.get(usuario_id)
         if entrada is not None and entrada.versao == versao and agora < entrada.expira_em:
-            return entrada.permissoes
+            return entrada.resolucao
         concessoes = await repositorio.concessoes(usuario_id, agora)
-        permissoes = permissoes_efetivas(concessoes)
+        resolucao = Resolucao(permissoes_efetivas(concessoes), papeis_das_concessoes(concessoes))
         # A entrada não passa da primeira expiração de atribuição (R2.3).
         expira_em = min(
             [agora + TTL, *(c.valido_ate for c in concessoes if c.valido_ate is not None)]
         )
-        self._cache[usuario_id] = _Entrada(versao, permissoes, expira_em)
-        return permissoes
+        self._cache[usuario_id] = _Entrada(versao, resolucao, expira_em)
+        return resolucao

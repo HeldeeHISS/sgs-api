@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.core.ids import uuid7
-from src.core.problem import PROBLEM_JSON
+from src.core.problem import problema
 from src.modules.access.api.deps import (
     ResourceRef,
     SessaoDeNegocio,
@@ -43,11 +43,6 @@ _CodigoDoTipo = Annotated[
     str, Field(min_length=1, max_length=50, description="Código do tipo de equipamento.")
 ]
 _Quantidade = Annotated[int, Field(ge=1, le=2_147_483_647)]
-
-
-def _problema(descricao: str) -> dict[str, Any]:
-    """Resposta de erro em problem+json (spec 001), para o contrato."""
-    return {"description": descricao, "content": {PROBLEM_JSON: {}}}
 
 
 class EquipamentoCreate(BaseModel):
@@ -138,9 +133,9 @@ class EquipamentoOut(BaseModel):
     "/unidades/{id}/equipamentos",
     summary="Listar equipamentos da unidade",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `unidade:read` no escopo da unidade"),
-        404: _problema("A unidade não existe"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `unidade:read` no escopo da unidade"),
+        404: problema("A unidade não existe"),
     },
 )
 async def listar(
@@ -162,10 +157,10 @@ async def listar(
     status_code=201,
     summary="Adicionar equipamento à unidade",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `equipamento:write` no escopo da unidade"),
-        404: _problema("A unidade não existe"),
-        422: _problema("Campos inválidos, ou tipo de equipamento inexistente ou desativado"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `equipamento:write` no escopo da unidade"),
+        404: problema("A unidade não existe"),
+        422: problema("Campos inválidos, ou tipo de equipamento inexistente ou desativado"),
     },
 )
 async def adicionar(
@@ -187,10 +182,10 @@ async def adicionar(
     "/unidades/{id}/equipamentos/{eid}",
     summary="Alterar equipamento da unidade",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `equipamento:write` no escopo da unidade"),
-        404: _problema("A unidade ou o equipamento dela não existe"),
-        422: _problema("Campos inválidos, ou tipo de equipamento inexistente ou desativado"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `equipamento:write` no escopo da unidade"),
+        404: problema("A unidade ou o equipamento dela não existe"),
+        422: problema("Campos inválidos, ou tipo de equipamento inexistente ou desativado"),
     },
 )
 async def alterar(
@@ -220,9 +215,9 @@ async def alterar(
     status_code=204,
     summary="Remover equipamento da unidade",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `equipamento:write` no escopo da unidade"),
-        404: _problema("A unidade ou o equipamento dela não existe"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `equipamento:write` no escopo da unidade"),
+        404: problema("A unidade ou o equipamento dela não existe"),
     },
 )
 async def remover(
@@ -248,8 +243,8 @@ async def remover(
     "/equipamentos",
     summary="Listar equipamentos sem unidade",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `equipamento:write` global"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `equipamento:write` global"),
     },
 )
 async def listar_sem_unidade_(
@@ -271,9 +266,9 @@ async def listar_sem_unidade_(
     status_code=201,
     summary="Cadastrar equipamento sem unidade",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `equipamento:write` global"),
-        422: _problema("Campos inválidos, ou tipo de equipamento inexistente ou desativado"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `equipamento:write` global"),
+        422: problema("Campos inválidos, ou tipo de equipamento inexistente ou desativado"),
     },
 )
 async def adicionar_sem_unidade(

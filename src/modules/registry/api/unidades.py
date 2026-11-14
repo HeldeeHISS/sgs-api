@@ -1,7 +1,7 @@
 """Rotas da unidade de saúde (design da 006 § Rotas)."""
 
 import re
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
@@ -14,7 +14,7 @@ from src.core.paginacao import (
     PaginaOut,
     TamanhoDaPagina,
 )
-from src.core.problem import PROBLEM_JSON
+from src.core.problem import problema
 from src.modules.access.api.deps import (
     ResourceRef,
     SessaoDeNegocio,
@@ -27,6 +27,7 @@ from src.modules.registry.api.schemas import (
     UnidadeCreate,
     UnidadeDesativacao,
     UnidadeDetalheOut,
+    UnidadeNaListaOut,
     UnidadeOut,
     UnidadeUpdate,
 )
@@ -46,11 +47,6 @@ router = APIRouter(prefix="/api/v1", tags=["unidades"])
 _ETAG = re.compile(r'"([1-9][0-9]{0,9})"')
 
 
-def _problema(descricao: str) -> dict[str, Any]:
-    """Resposta de erro em problem+json (spec 001), para o contrato."""
-    return {"description": descricao, "content": {PROBLEM_JSON: {}}}
-
-
 # Ids das referências são `smallint` no banco.
 _IdDeReferencia = Annotated[int | None, Query(ge=1, le=32767)]
 
@@ -61,9 +57,9 @@ OrdemPedida = Literal["nome", "distrito", "atualizacao"]
     "/unidades",
     summary="Listar e buscar unidades de saúde",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `unidade:read`"),
-        422: _problema("Parâmetro de busca, filtro, ordenação ou paginação inválido"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `unidade:read`"),
+        422: problema("Parâmetro de busca, filtro, ordenação ou paginação inválido"),
     },
 )
 async def listar(
@@ -95,9 +91,9 @@ async def listar(
     ] = None,
     pagina: NumeroDaPagina = 1,
     tamanho: TamanhoDaPagina = TAMANHO_PADRAO,
-) -> PaginaOut[UnidadeOut]:
+) -> PaginaOut[UnidadeNaListaOut]:
     """006/R2.1 a R2.4, R2.6: uma página das unidades no escopo de leitura do usuário, com o total
-    da listagem. Os filtros se combinam."""
+    da listagem. Os filtros se combinam. O item é o resumo, sem os dados de contato do gestor."""
     texto = None if q is None else (q.strip() or None)
     filtros = FiltrosDeUnidades(
         texto=texto,
@@ -116,7 +112,7 @@ async def listar(
             unidades=request.app.state.repositorio_de_unidades(sessao),
         )
     return PaginaOut(
-        itens=[UnidadeOut.de(unidade) for unidade in resultado.itens],
+        itens=[UnidadeNaListaOut.de(unidade) for unidade in resultado.itens],
         total=resultado.total,
         pagina=pagina,
         tamanho=tamanho,
@@ -127,10 +123,10 @@ async def listar(
     "/unidades/{id}",
     summary="Detalhar unidade de saúde",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `unidade:read` no escopo da unidade"),
-        404: _problema("A unidade não existe"),
-        422: _problema("Id inválido"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `unidade:read` no escopo da unidade"),
+        404: problema("A unidade não existe"),
+        422: problema("Id inválido"),
     },
 )
 async def detalhar(
@@ -154,10 +150,10 @@ async def detalhar(
     status_code=201,
     summary="Cadastrar unidade de saúde",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `unidade:create` na área técnica do tipo informado"),
-        409: _problema("Já existe unidade com o mesmo CNES ou o mesmo nome no distrito"),
-        422: _problema("Campos inválidos, ou tipo de unidade ou distrito inexistente"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `unidade:create` na área técnica do tipo informado"),
+        409: problema("Já existe unidade com o mesmo CNES ou o mesmo nome no distrito"),
+        422: problema("Campos inválidos, ou tipo de unidade ou distrito inexistente"),
     },
 )
 async def criar(
@@ -186,16 +182,16 @@ async def criar(
     "/unidades/{id}",
     summary="Atualizar unidade de saúde",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema(
+        401: problema("Sem access token válido"),
+        403: problema(
             "Sem `unidade:update` no escopo da unidade, ou alteração de distrito, tipo ou CNES "
             "sem escopo global ou na área técnica (os campos vêm em `campos`)"
         ),
-        404: _problema("A unidade não existe"),
-        409: _problema("Já existe unidade com o mesmo CNES ou o mesmo nome no distrito"),
-        412: _problema("A unidade mudou depois da versão informada em `If-Match`"),
-        422: _problema("Campos inválidos, ou tipo de unidade ou distrito inexistente"),
-        428: _problema("Falta o cabeçalho `If-Match`"),
+        404: problema("A unidade não existe"),
+        409: problema("Já existe unidade com o mesmo CNES ou o mesmo nome no distrito"),
+        412: problema("A unidade mudou depois da versão informada em `If-Match`"),
+        422: problema("Campos inválidos, ou tipo de unidade ou distrito inexistente"),
+        428: problema("Falta o cabeçalho `If-Match`"),
     },
 )
 async def atualizar(
@@ -244,10 +240,10 @@ def _versao_esperada(if_match: str | None) -> int:
     "/unidades/{id}/desativar",
     summary="Desativar unidade de saúde",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `unidade:deactivate` no escopo da unidade"),
-        404: _problema("A unidade não existe"),
-        422: _problema("Motivo ausente ou inválido"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `unidade:deactivate` no escopo da unidade"),
+        404: problema("A unidade não existe"),
+        422: problema("Motivo ausente ou inválido"),
     },
 )
 async def desativar(

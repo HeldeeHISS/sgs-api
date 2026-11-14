@@ -145,9 +145,12 @@ class _Identificado(Protocol):
 
 
 def ator_da_requisicao(request: Request, usuario: _Identificado) -> Ator:
-    """Quem faz a requisição e de onde, para a auditoria (001/R5.1)."""
+    """Quem faz a requisição e de onde, para a auditoria (001/R5.1). Com o `UsuarioAtual` do
+    `require`, leva os papéis vigentes dele (`actor_roles`, 008/R1.2); o `CurrentUser` da 002,
+    usado quando o `require` nega, não os tem."""
     return Ator(
         user_id=usuario.id,
+        papeis=tuple(getattr(usuario, "papeis", ())),
         session_id=usuario.sessao_id,
         ip=_ip(request),
         request_id=getattr(request.state, "request_id", None),

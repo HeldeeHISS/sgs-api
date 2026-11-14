@@ -366,6 +366,30 @@ async def test_coordenador_de_outra_area_nao_altera_a_unidade(
     assert (await _gravada(sessoes, unidade))["cnes"] == "2345678"
 
 
+async def test_coordenador_nao_troca_o_tipo_para_um_de_area_fora_do_seu_escopo(
+    app: FastAPI, cliente: httpx.AsyncClient, sessoes: Sessoes
+) -> None:
+    """006/R1.1, R3.4: o Coordenador Técnico de Saúde Mental não muda o CAPS II para USF (APS):
+    a área do tipo novo também tem de estar no escopo, como no cadastro. O 403 aponta o campo, é
+    auditado com a unidade e nada muda (006/T5, resolvido na revisão)."""
+    unidade = await _unidade(sessoes)
+    coordenador = await logado(sessoes, await _atribuicao(sessoes, "COORD_TECNICO", unidade))
+    corpo = await _com_ids(sessoes, {"tipo_unidade_id": "USF"})
+
+    resposta = await cliente.patch(
+        _rota(unidade), json=corpo, headers=_cabecalhos(app, coordenador)
+    )
+
+    assert resposta.status_code == 403
+    assert resposta.json()["campos"] == ["tipo_unidade_id"]
+    [negacao] = await eventos(sessoes, "acesso.negado")
+    assert (negacao["entity_type"], negacao["entity_id"]) == ("unidade", str(unidade))
+    gravada = await _gravada(sessoes, unidade)
+    assert gravada["unit_type_id"] == await id_pelo_codigo(sessoes, "tipo_unidade", "CAPS_II")
+    assert gravada["version"] == 1
+    assert await eventos(sessoes, "unidade.atualizada") == []
+
+
 async def test_apagar_o_cnes_deixa_a_unidade_pendente(
     app: FastAPI, cliente: httpx.AsyncClient, sessoes: Sessoes
 ) -> None:

@@ -42,8 +42,19 @@ FRAGMENTO_DE_ESCOPO = (
 # Lê o cadastro (tem escopo); as tabelas de referência não têm.
 LE_O_CADASTRO = re.compile(r"\b(health_units|equipments|services|vw_[a-z_]+)\b")
 
-# Índices com prova de uso por plano de execução (011/R1.1 a R1.4; 011/T9).
-INDICES_COM_PLANO = {"ix_audit_log_entity", "ix_services_unit_id"}
+# Todo índice escrito à mão (011/R1.4, "cada índice"; 011/T9 e revisão do /implement-spec) → o
+# nome que aparece no plano: o próprio ou, no log particionado, o que o PostgreSQL cria em cada
+# partição a partir dele.
+INDICES_COM_PLANO = {
+    "ix_audit_log_entity": "ix_audit_log_entity",
+    "ix_services_unit_id": "ix_services_unit_id",
+    "ix_health_units_cnes": "ix_health_units_cnes",
+    "ix_health_units_district_id_name_normalized": "ix_health_units_district_id_name_normalized",
+    "ix_db_change_log_occurred_at": "db_change_log_y<AAAA>m<MM>_occurred_at_idx",
+}
+# Índices que o planejador não usa com o volume de demonstração: o cabeçalho traz o plano e diz
+# isso (011, "Perguntas em aberto", R1.4).
+INDICES_SEM_USO_COMPROVADO = {"ix_health_units_name_normalized_trgm"}
 
 
 def _relativo(arquivo: Path) -> str:
@@ -151,13 +162,37 @@ def _arquivo_que_cria(nome: str) -> Path:
     raise AssertionError(f"nenhum arquivo cria {nome}")
 
 
+def test_todo_indice_criado_tem_regra_de_plano() -> None:
+    """011/R1.4: nenhum índice escrito à mão fica fora das regras abaixo."""
+    criados = {
+        nome
+        for arquivo in ARQUIVOS_DDL
+        for tipo, nome in CRIACAO.findall(_corpo(arquivo))
+        if tipo.upper() == "INDEX"
+    }
+    assert criados == set(INDICES_COM_PLANO) | INDICES_SEM_USO_COMPROVADO
+
+
 @pytest.mark.parametrize("indice", sorted(INDICES_COM_PLANO))
 def test_indice_documenta_o_plano_que_comprova_o_uso(indice: str) -> None:
     """011/R1.4: o índice cita a consulta ou view que o usa e o plano de execução da prova."""
     cabecalho = _cabecalho(_arquivo_que_cria(indice))
+    no_plano = re.escape(INDICES_COM_PLANO[indice])
 
     assert "EXPLAIN" in cabecalho
-    assert re.search(rf"Index Scan (using|on) {indice}\b", cabecalho)
+    assert re.search(rf"Index Scan (using|on) {no_plano}\b", cabecalho)
+    assert "tests/integration/db/test_indices.py" in cabecalho
+
+
+@pytest.mark.parametrize("indice", sorted(INDICES_SEM_USO_COMPROVADO))
+def test_indice_sem_uso_comprovado_registra_o_plano_e_diz_isso(indice: str) -> None:
+    """011/R1.4: o índice que o planejador não usa com o volume de teste registra o plano real e
+    diz que o uso não foi comprovado, sem forçar o plano."""
+    cabecalho = _cabecalho(_arquivo_que_cria(indice))
+
+    assert "EXPLAIN" in cabecalho
+    assert "Sem uso comprovado" in cabecalho
+    assert "`enable_seqscan` no padrão" in cabecalho
     assert "tests/integration/db/test_indices.py" in cabecalho
 
 

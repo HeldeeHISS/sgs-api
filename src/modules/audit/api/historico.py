@@ -5,14 +5,14 @@ permissão, ou com ela fora do escopo da unidade, 403 (008/R1.4); unidade inexis
 tem a permissão. A sessão é só de leitura: nada é gravado.
 """
 
-from typing import Annotated, Any
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import AwareDatetime
 
 from src.core.paginacao import TAMANHO_PADRAO, NumeroDaPagina, PaginaOut, TamanhoDaPagina
-from src.core.problem import PROBLEM_JSON
+from src.core.problem import problema
 from src.modules.access.api.deps import ResourceRef, require
 from src.modules.audit.api.schemas import EventoHistoricoOut
 from src.modules.audit.application import historico
@@ -25,11 +25,6 @@ from src.modules.audit.application.historico import (
 # Tamanho de `changes[].campo` aceito no filtro: nomes de coluna e caminhos como
 # `equipamento.nome` cabem com folga.
 _CAMPO_MAXIMO = 100
-
-
-def _problema(descricao: str) -> dict[str, Any]:
-    """Resposta de erro em problem+json (spec 001), para o contrato."""
-    return {"description": descricao, "content": {PROBLEM_JSON: {}}}
 
 
 def _filtros(
@@ -63,10 +58,10 @@ router = APIRouter(prefix="/api/v1", tags=["auditoria"])
     summary="Histórico de alterações da unidade",
     dependencies=[Depends(require(historico.PERMISSAO, ResourceRef("unidade")))],
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `auditoria:read` no escopo da unidade"),
-        404: _problema("Unidade inexistente"),
-        422: _problema("Filtro ou paginação mal formados"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `auditoria:read` no escopo da unidade"),
+        404: problema("Unidade inexistente"),
+        422: problema("Filtro ou paginação mal formados"),
     },
 )
 async def historico_da_unidade(

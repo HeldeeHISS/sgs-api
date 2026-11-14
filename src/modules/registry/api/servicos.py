@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
 
 from src.core.ids import uuid7
-from src.core.problem import PROBLEM_JSON
+from src.core.problem import problema
 from src.modules.access.api.deps import (
     ResourceRef,
     SessaoDeNegocio,
@@ -42,11 +42,6 @@ _NoCnes = Annotated[StrictBool, Field(description="Se o serviço consta no CNES.
 _IdDoEquipamento = Annotated[
     UUID, Field(description="Equipamento em que o serviço é ofertado, da mesma unidade.")
 ]
-
-
-def _problema(descricao: str) -> dict[str, Any]:
-    """Resposta de erro em problem+json (spec 001), para o contrato."""
-    return {"description": descricao, "content": {PROBLEM_JSON: {}}}
 
 
 class ServicoCreate(BaseModel):
@@ -135,7 +130,7 @@ class ServicoOut(BaseModel):
         )
 
 
-_422 = _problema(
+_422 = problema(
     "Campos inválidos, tipo de serviço inexistente ou desativado, ou equipamento de outra unidade"
 )
 
@@ -144,9 +139,9 @@ _422 = _problema(
     "/unidades/{id}/servicos",
     summary="Listar serviços da unidade",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `unidade:read` no escopo da unidade"),
-        404: _problema("A unidade não existe"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `unidade:read` no escopo da unidade"),
+        404: problema("A unidade não existe"),
     },
 )
 async def listar(
@@ -167,9 +162,9 @@ async def listar(
     status_code=201,
     summary="Adicionar serviço à unidade",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `servico:write` no escopo da unidade"),
-        404: _problema("A unidade não existe"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `servico:write` no escopo da unidade"),
+        404: problema("A unidade não existe"),
         422: _422,
     },
 )
@@ -192,9 +187,9 @@ async def adicionar(
     "/unidades/{id}/servicos/{sid}",
     summary="Alterar serviço da unidade",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `servico:write` no escopo da unidade"),
-        404: _problema("A unidade ou o serviço dela não existe"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `servico:write` no escopo da unidade"),
+        404: problema("A unidade ou o serviço dela não existe"),
         422: _422,
     },
 )
@@ -225,9 +220,9 @@ async def alterar(
     status_code=204,
     summary="Remover serviço da unidade",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `servico:write` no escopo da unidade"),
-        404: _problema("A unidade ou o serviço dela não existe"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `servico:write` no escopo da unidade"),
+        404: problema("A unidade ou o serviço dela não existe"),
     },
 )
 async def remover(
@@ -252,8 +247,8 @@ async def remover(
     "/servicos",
     summary="Listar serviços soltos",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `servico:write` global"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `servico:write` global"),
     },
 )
 async def listar_soltos_(
@@ -272,9 +267,9 @@ async def listar_soltos_(
     status_code=201,
     summary="Cadastrar serviço solto",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `servico:write` global"),
-        422: _problema(
+        401: problema("Sem access token válido"),
+        403: problema("Sem `servico:write` global"),
+        422: problema(
             "Campos inválidos, tipo de serviço inexistente ou desativado, ou equipamento de uma"
             " unidade"
         ),

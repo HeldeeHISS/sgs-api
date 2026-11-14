@@ -1,7 +1,7 @@
 """Rotas de administração de atribuições de papel (spec 003, R2; design § Rotas)."""
 
 from datetime import datetime
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Literal, Self
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -9,7 +9,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from src.core.ids import uuid7
 from src.core.paginacao import TAMANHO_PADRAO, NumeroDaPagina, PaginaOut, TamanhoDaPagina
-from src.core.problem import PROBLEM_JSON
+from src.core.problem import problema
 from src.modules.access.api.deps import (
     SessaoDeNegocio,
     UsuarioAtual,
@@ -29,10 +29,6 @@ from src.modules.access.application.atribuicoes import (
 router = APIRouter(prefix="/api/v1/admin", tags=["administração de acesso"])
 
 _ORIGENS: dict[str, Literal["direta", "grupo"]] = {"direct": "direta", "group": "grupo"}
-
-
-def _problema(descricao: str) -> dict[str, Any]:
-    return {"description": descricao, "content": {PROBLEM_JSON: {}}}
 
 
 class AtribuicaoCreate(BaseModel):
@@ -78,9 +74,9 @@ class AtribuicaoOut(BaseModel):
     "/atribuicoes",
     summary="Listar atribuições de papel vigentes",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `papel:assign`"),
-        422: _problema("Parâmetro inválido"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `papel:assign`"),
+        422: problema("Parâmetro inválido"),
     },
 )
 async def listar(
@@ -111,10 +107,10 @@ async def listar(
     status_code=201,
     summary="Atribuir papel a um usuário",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `papel:assign`, ou atribuição a si mesmo (segregação de funções)"),
-        409: _problema("O usuário já tem este papel neste escopo"),
-        422: _problema(
+        401: problema("Sem access token válido"),
+        403: problema("Sem `papel:assign`, ou atribuição a si mesmo (segregação de funções)"),
+        409: problema("O usuário já tem este papel neste escopo"),
+        422: problema(
             "Campos inválidos, usuário ou papel inexistente, expiração no passado, escopo de "
             "nível diferente do exigido pelo papel ou inexistente"
         ),
@@ -154,11 +150,11 @@ async def atribuir(
     status_code=204,
     summary="Remover atribuição de papel",
     responses={
-        401: _problema("Sem access token válido"),
-        403: _problema("Sem `papel:assign`"),
-        404: _problema("A atribuição não existe"),
-        409: _problema("A atribuição é derivada de grupo do diretório"),
-        422: _problema("Id inválido"),
+        401: problema("Sem access token válido"),
+        403: problema("Sem `papel:assign`"),
+        404: problema("A atribuição não existe"),
+        409: problema("A atribuição é derivada de grupo do diretório"),
+        422: problema("Id inválido"),
     },
 )
 async def remover(

@@ -133,6 +133,28 @@ async def test_lista_pagina_com_20_por_padrao_e_total(
     assert depois_da_ultima.json()["itens"] == []
 
 
+async def test_item_da_lista_nao_traz_o_gestor_nem_o_telefone_e_o_detalhe_traz(
+    app: FastAPI, cliente: httpx.AsyncClient, sessoes: Sessoes, dono: AsyncConnection
+) -> None:
+    """steering/security.md § LGPD (na dúvida, o mais restritivo): o item da listagem é um resumo
+    sem `nome_gestor` nem `telefone`; o detalhe da unidade que a pessoa abriu continua com os
+    dois (006/R2.1, R2.5; pergunta da 006/T4 resolvida na revisão)."""
+    unidade = await inserir_unidade(dono, "CAPS Espaço Azul", cnes="2711907")
+    await _atualizar(dono, unidade, "manager_name = 'Ana Souza', phone = '8133551234'")
+    await dono.commit()
+    cabecalhos = await _cabecalhos(app, sessoes)
+
+    lista = await cliente.get(LISTA, headers=cabecalhos)
+    detalhe = await cliente.get(_detalhe(unidade), headers=cabecalhos)
+
+    [item] = lista.json()["itens"]
+    assert item["id"] == str(unidade)
+    assert "nome_gestor" not in item
+    assert "telefone" not in item
+    corpo = detalhe.json()
+    assert (corpo["nome_gestor"], corpo["telefone"]) == ("Ana Souza", "8133551234")
+
+
 async def test_tamanho_vai_ate_100(
     app: FastAPI, cliente: httpx.AsyncClient, sessoes: Sessoes
 ) -> None:
