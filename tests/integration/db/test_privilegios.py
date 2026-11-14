@@ -6,6 +6,7 @@ pelo login da API.
 
 import pytest
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError
 
 from tests.integration.postgres import LOGIN_DA_API, BancoDeTeste, motor
 
@@ -172,3 +173,72 @@ async def test_indices_das_consultas_por_unidade_existem(
     await engine.dispose()
 
     assert no_banco == definicao, requisito
+
+
+# Funções de trigger anteriores à 0011 (0001 e 0003), tiradas de PUBLIC na 0011_09.
+FUNCOES_DE_TRIGGER_ANTIGAS = {
+    "audit_log_somente_insercao": "audit_log_somente_insercao()",
+    "trg_roles_protect_system": "trg_roles_protect_system()",
+}
+
+
+@pytest.mark.parametrize(
+    "assinatura", FUNCOES_DE_TRIGGER_ANTIGAS.values(), ids=FUNCOES_DE_TRIGGER_ANTIGAS.keys()
+)
+async def test_funcoes_de_trigger_antigas_nao_sao_executaveis_por_todo_usuario(
+    banco: BancoDeTeste, assinatura: str
+) -> None:
+    """011/R10.1: nem PUBLIC, nem o `sgs_app`, nem o login da API executam as funções de trigger
+    da 0001 e da 0003 (0011_09)."""
+    engine = motor(banco.url_dono)
+    async with engine.connect() as conexao:
+        linha = await conexao.execute(
+            text(
+                "SELECT has_function_privilege('public', :assinatura, 'EXECUTE'),"
+                " has_function_privilege('sgs_app', :assinatura, 'EXECUTE'),"
+                " has_function_privilege(:login, :assinatura, 'EXECUTE')"
+            ),
+            {"assinatura": assinatura, "login": LOGIN_DA_API},
+        )
+        privilegios = tuple(linha.one())
+    await engine.dispose()
+
+    assert privilegios == (False, False, False)
+
+
+# O que cada trigger ainda barra depois do REVOKE (0011_09): preparo (ou nada), comando, mensagem.
+BARRADOS_PELO_TRIGGER = {
+    "audit_log_somente_insercao": (
+        "INSERT INTO audit_log (occurred_at, action, prev_hash, hash)"
+        " VALUES (now(), 'teste.criado', repeat('0', 64), repeat('a', 64))",
+        "UPDATE audit_log SET action = 'adulterado'",
+        "somente inserção",
+    ),
+    "trg_roles_protect_system": (
+        None,
+        "UPDATE roles SET is_system = false WHERE code = 'AUDITOR'",
+        "papel de sistema",
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    ("preparo", "comando", "mensagem"),
+    BARRADOS_PELO_TRIGGER.values(),
+    ids=BARRADOS_PELO_TRIGGER.keys(),
+)
+async def test_triggers_antigos_continuam_barrando_depois_do_revoke(
+    banco: BancoDeTeste, preparo: str | None, comando: str, mensagem: str
+) -> None:
+    """011/R10.1, 001/R5.2, 003/R1.3: sem EXECUTE para PUBLIC, `audit_log_somente_insercao` ainda
+    barra o UPDATE na trilha e `trg_roles_protect_system` ainda protege o papel de sistema (o
+    PostgreSQL não confere EXECUTE da função de trigger para quem dispara o trigger). Os dois
+    rodam pelo dono do banco, que tem UPDATE nas tabelas: quem barra é o trigger."""
+    engine = motor(banco.url_dono)
+    if preparo is not None:
+        async with engine.begin() as conexao:
+            await conexao.execute(text(preparo))
+    with pytest.raises(DBAPIError, match=mensagem):
+        async with engine.begin() as conexao:
+            await conexao.execute(text(comando))
+    await engine.dispose()
