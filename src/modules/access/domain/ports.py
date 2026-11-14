@@ -8,7 +8,8 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
-from src.modules.access.domain.authorization import Alvo, Concessao, PapelAtribuido
+from src.modules.access.domain.atribuicoes import Atribuicao
+from src.modules.access.domain.authorization import Alvo, Concessao, Escopo, PapelAtribuido
 
 
 class RepositorioDePermissoes(Protocol):
@@ -31,6 +32,37 @@ class RepositorioDePapeis(Protocol):
     async def papeis(self, usuario_id: UUID, agora: datetime) -> Sequence[PapelAtribuido]:
         """As atribuições do usuário (diretas ou de grupo) que não tenham expirado até `agora`,
         na ordem do código do papel."""
+        ...
+
+
+class RepositorioDeAtribuicoes(Protocol):
+    """Atribuições de papel para a administração (R2)."""
+
+    async def escopos_maximos(self, papel: str) -> frozenset[str] | None:
+        """Os `max_scope` das permissões do papel de código `papel`; `None` se ele não existe."""
+        ...
+
+    async def escopo_existe(self, escopo: Escopo) -> bool:
+        """Se a área técnica, o distrito ou a unidade existe (global sempre existe)."""
+        ...
+
+    async def ha_direta_vigente(
+        self, usuario_id: UUID, papel: str, escopo: Escopo, agora: datetime
+    ) -> bool:
+        """Se o usuário já tem, direta e não expirada até `agora`, a mesma atribuição."""
+        ...
+
+    async def inserir(self, atribuicao: Atribuicao) -> None: ...
+
+    async def obter(self, atribuicao_id: UUID) -> Atribuicao | None: ...
+
+    async def remover(self, atribuicao_id: UUID) -> None: ...
+
+    async def listar(
+        self, usuario_id: UUID | None, agora: datetime, *, deslocamento: int, limite: int
+    ) -> tuple[Sequence[Atribuicao], int]:
+        """Uma página das atribuições não expiradas até `agora`, de um usuário ou de todos, na
+        ordem de criação, e o total da listagem."""
         ...
 
 

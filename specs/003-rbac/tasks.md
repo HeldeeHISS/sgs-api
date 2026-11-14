@@ -30,7 +30,7 @@
   - Bloqueada por: T3, T4 (`CurrentUser`)
   - Requisitos: R5.1
   - Pronto quando: `tests/integration/access/test_me.py` passa
-- [ ] T7. Rotas de administração de atribuições com validação de escopo e auditoria
+- [x] T7. Rotas de administração de atribuições com validação de escopo e auditoria
   - Bloqueada por: T4
   - Requisitos: R2.1–R2.5
   - Pronto quando: `tests/integration/access/test_admin_atribuicoes.py` passa

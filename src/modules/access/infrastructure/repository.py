@@ -2,12 +2,37 @@
 
 from collections.abc import Sequence
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import Integer, SmallInteger, Uuid, column, or_, select, table, update
+from sqlalchemy import (
+    Integer,
+    SmallInteger,
+    Uuid,
+    column,
+    delete,
+    exists,
+    func,
+    insert,
+    or_,
+    select,
+    table,
+    update,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.modules.access.domain.authorization import Alvo, Concessao, PapelAtribuido, escopo_de
+from src.modules.access.domain.atribuicoes import Atribuicao, colunas_do_escopo
+from src.modules.access.domain.authorization import (
+    Alvo,
+    Area,
+    Concessao,
+    Distrito,
+    Escopo,
+    Global,
+    PapelAtribuido,
+    Unidade,
+    escopo_de,
+)
 from src.modules.access.infrastructure.tables import (
     permissions,
     role_assignments,
@@ -29,6 +54,11 @@ _health_units = table(
 _unit_types = table(
     "unit_types", column("id", SmallInteger), column("technical_area_id", SmallInteger)
 )
+_districts = table("districts", column("id", SmallInteger))
+_technical_areas = table("technical_areas", column("id", SmallInteger))
+
+# Faixa de `smallint`, o tipo do id do distrito e da área técnica.
+_SMALLINT = range(1, 32768)
 
 
 class SqlRepositorioDePermissoes:
@@ -128,3 +158,131 @@ class SqlResolvedorDeUnidade:
             return None
         unidade, distrito, area = linha
         return Alvo(unidade_id=unidade, distrito_id=distrito, area_id=area)
+
+
+class SqlRepositorioDeAtribuicoes:
+    """`RepositorioDeAtribuicoes` (003/R2) sobre `role_assignments`."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def escopos_maximos(self, papel: str) -> frozenset[str] | None:
+        papel_id = await self._session.scalar(select(roles.c.id).where(roles.c.code == papel))
+        if papel_id is None:
+            return None
+        resultado = await self._session.scalars(
+            select(role_permissions.c.max_scope).where(role_permissions.c.role_id == papel_id)
+        )
+        return frozenset(resultado.all())
+
+    async def escopo_existe(self, escopo: Escopo) -> bool:
+        match escopo:
+            case Global():
+                return True
+            case Area(id=id_):
+                return id_ in _SMALLINT and await self._existe(_technical_areas.c.id == id_)
+            case Distrito(id=id_):
+                return id_ in _SMALLINT and await self._existe(_districts.c.id == id_)
+            case Unidade(id=id_):
+                return await self._existe(_health_units.c.id == id_)
+
+    async def _existe(self, condicao: Any) -> bool:
+        return bool(await self._session.scalar(select(exists().where(condicao))))
+
+    async def ha_direta_vigente(
+        self, usuario_id: UUID, papel: str, escopo: Escopo, agora: datetime
+    ) -> bool:
+        nivel, id_do_escopo = colunas_do_escopo(escopo)
+        return await self._existe(
+            (role_assignments.c.user_id == usuario_id)
+            & (role_assignments.c.role_id == _id_do_papel(papel))
+            & (role_assignments.c.scope_type == nivel)
+            & role_assignments.c.scope_id.is_not_distinct_from(id_do_escopo)
+            & (role_assignments.c.origin == "direct")
+            & _vigente(agora)
+        )
+
+    async def inserir(self, atribuicao: Atribuicao) -> None:
+        nivel, id_do_escopo = colunas_do_escopo(atribuicao.escopo)
+        await self._session.execute(
+            insert(role_assignments).values(
+                id=atribuicao.id,
+                user_id=atribuicao.usuario_id,
+                role_id=_id_do_papel(atribuicao.papel),
+                scope_type=nivel,
+                scope_id=id_do_escopo,
+                origin=atribuicao.origem,
+                granted_by=atribuicao.concedida_por,
+                valid_until=atribuicao.valido_ate,
+            )
+        )
+
+    async def obter(self, atribuicao_id: UUID) -> Atribuicao | None:
+        resultado = await self._session.execute(
+            _SELECAO.where(role_assignments.c.id == atribuicao_id)
+        )
+        linha = resultado.one_or_none()
+        return None if linha is None else _atribuicao(*linha)
+
+    async def remover(self, atribuicao_id: UUID) -> None:
+        await self._session.execute(
+            delete(role_assignments).where(role_assignments.c.id == atribuicao_id)
+        )
+
+    async def listar(
+        self, usuario_id: UUID | None, agora: datetime, *, deslocamento: int, limite: int
+    ) -> tuple[Sequence[Atribuicao], int]:
+        filtro = _vigente(agora)
+        if usuario_id is not None:
+            filtro = filtro & (role_assignments.c.user_id == usuario_id)
+        total = await self._session.scalar(
+            select(func.count()).select_from(role_assignments).where(filtro)
+        )
+        resultado = await self._session.execute(
+            _SELECAO.where(filtro)
+            .order_by(role_assignments.c.id)
+            .offset(deslocamento)
+            .limit(limite)
+        )
+        return [_atribuicao(*linha) for linha in resultado.all()], int(total or 0)
+
+
+def _vigente(agora: datetime) -> Any:
+    return or_(role_assignments.c.valid_until.is_(None), role_assignments.c.valid_until > agora)
+
+
+def _id_do_papel(papel: str) -> Any:
+    return select(roles.c.id).where(roles.c.code == papel).scalar_subquery()
+
+
+_SELECAO = select(
+    role_assignments.c.id,
+    role_assignments.c.user_id,
+    roles.c.code,
+    role_assignments.c.scope_type,
+    role_assignments.c.scope_id,
+    role_assignments.c.origin,
+    role_assignments.c.granted_by,
+    role_assignments.c.valid_until,
+).select_from(role_assignments.join(roles, roles.c.id == role_assignments.c.role_id))
+
+
+def _atribuicao(
+    id_: UUID,
+    usuario: UUID,
+    papel: str,
+    nivel: str,
+    id_do_escopo: str | None,
+    origem: str,
+    concedida_por: UUID | None,
+    valido_ate: datetime | None,
+) -> Atribuicao:
+    return Atribuicao(
+        id=id_,
+        usuario_id=usuario,
+        papel=papel,
+        escopo=escopo_de(nivel, id_do_escopo),
+        origem=origem,
+        concedida_por=concedida_por,
+        valido_ate=valido_ate,
+    )
