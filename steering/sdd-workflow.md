@@ -54,7 +54,7 @@ Os designs revistos na regularização das specs 008, 009, 010 e 011 (itens V1 a
 
 ## Dono da spec: atribuição e transferência
 - O dono fica numa linha do cabeçalho do `requirements.md`: `- Dono humano: <nome> (<login>)`. Design e tarefas seguem o dono dos requisitos.
-- Spec sem dono registrado fica com o responsável pelo projeto até alguém assumir. Responsável pelo projeto desde 09/11/2026: Vinicius (ViniciusVbm).
+- Spec sem dono registrado fica com o responsável pelo projeto até alguém assumir. Responsável pelo projeto desde 09/11/2026: Vinicius (ViniciusVbm). Também responsável, com os mesmos poderes: Rafael (rafareloM), administrador do repositório, registrado em 24/11/2026 por declaração dele na sessão de trabalho (registro do agente).
 - Transferir é trocar essa linha por `- Dono humano: <novo> (<login>), desde <data>; antes: <anterior>`, num commit ou PR que diga o motivo. Quem transfere é o dono atual ou o responsável pelo projeto. Não há outro passo.
 - Aprovações e decisões já registradas continuam com o nome e a data de quem as deu. O novo dono não as refaz nem assina nada com data retroativa.
 - Os portões que estavam pendentes passam ao novo dono, com as mesmas regras da tabela.

@@ -2,7 +2,7 @@
 
 - Status: Rascunho
 - Rastreia: RS-01, RS-02, RS-03, RS-05, RS-08, requisito obrigatório "consumo de credenciais via LDAP e OIDC para popular as tabelas locais dos usuários e grupos"
-- Dono humano: Vinicius (ViniciusVbm), como responsável pelo projeto: a spec não tinha dono registrado (`steering/sdd-workflow.md` § Dono da spec). Linha registrada na revisão de 09/11/2026.
+- Dono humano: Vinicius (ViniciusVbm) e Rafael (rafareloM), como responsáveis pelo projeto: a spec não tinha dono registrado (`steering/sdd-workflow.md` § Dono da spec). Linha registrada na revisão de 09/11/2026; Rafael acrescentado em 24/11/2026.
 
 ## Contexto
 A Secretaria (como a maioria dos órgãos públicos) já mantém identidades em diretório corporativo. A API deve consumir essas identidades por LDAP e por OIDC, espelhá-las em `users`, `groups` e `user_groups`, e transformar grupos em papéis pelo mapeamento da spec 003.

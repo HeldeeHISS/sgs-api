@@ -2,7 +2,7 @@
 
 - Status: Rascunho
 - Rastreia: RF-07 (parcial), RNF-05, RS-03, RS-04, RS-05, requisito obrigatório "exportação de relatórios para armazenamento em nuvem com mecanismos de autenticação avançados", objetivo "assinaturas digitais e certificados" da disciplina de Criptografia (R5)
-- Dono humano: Vinicius (ViniciusVbm), como responsável pelo projeto: a spec não tinha dono registrado (`steering/sdd-workflow.md` § Dono da spec). Linha registrada na revisão de 09/11/2026.
+- Dono humano: Vinicius (ViniciusVbm) e Rafael (rafareloM), como responsáveis pelo projeto: a spec não tinha dono registrado (`steering/sdd-workflow.md` § Dono da spec). Linha registrada na revisão de 09/11/2026; Rafael acrescentado em 24/11/2026.
 
 ## Contexto
 Relatórios avançados estão fora do MVP (Requisitos Esperados §2.2). Esta spec entrega o mínimo que cumpre o requisito obrigatório: dois relatórios simples exportados para S3 com credenciais temporárias, criptografia e download controlado. Ver ADR-0005.

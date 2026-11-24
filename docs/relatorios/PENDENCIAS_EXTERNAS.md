@@ -4,7 +4,7 @@
 - O que é: o que falta no projeto e depende de alguém de fora da equipe de desenvolvimento. O resto do MVP está pronto e testado ([RESUMO_STATUS_PROJETO.md](../RESUMO_STATUS_PROJETO.md)).
 - Prazos: validação em 21/11/2026, code freeze em 28/11/2026, SR2 em 05/12/2026.
 
-## 1. Aprovação das specs (dono: Vinicius)
+## 1. Aprovação das specs (dono: Vinicius; nas 004 e 005, também Rafael desde 24/11/2026)
 Nenhum código destas specs pode ser escrito antes da aprovação (regra 1 do `AGENTS.md`). Requisitos e tarefas são aprovados pelo dono; o design precisa do dono e de mais um integrante. As perguntas de cada spec estão na seção "Perguntas em aberto" do `requirements.md`, com uma recomendação.
 
 | Spec | O que falta decidir | O que fica bloqueado |
