@@ -50,3 +50,18 @@ class ReportGenerator(Protocol):
 - Integração com moto (`mock_aws`): `AssumeRole` chamado com `ExternalId` e nome de sessão; `PutObject` com SSE e checksum; URL pré-assinada com expiração de 300 s.
 - Teste de configuração: em `prod`, sem `S3_ASSUME_ROLE_ARN` a API recusa iniciar.
 - Integração (marcador `slow`): upload real no SeaweedFS do compose.
+
+## Ajustes pendentes do G1 (revisão de 24/11/2026, agente; aguarda o dono)
+Não aplicados: o design só muda depois do G1 dos requisitos revistos (`/spec-design`, passo 1). Com eles aprovados, este design precisa de:
+- **Rotas:** `GET /api/v1/relatorios/{id}/download` responde 200 com `{url, expira_em}` (R3.2).
+- **Adaptador S3:**
+  - dois clientes: o de envio usa o endereço interno, e o que gera a URL pré-assinada usa o endereço público (`S3_PUBLIC_ENDPOINT_URL`), porque a assinatura SigV4 cobre o host e a URL não pode ser reescrita depois (R3.6);
+  - depois do `put_object`, conferir `ServerSideEncryption` e `ChecksumSHA256` da resposta e, se não conferirem, apagar o objeto e marcar `falhou` (R2.8).
+- **Configuração:** na subida em `prod`, exigir `S3_ASSUME_ROLE_ARN`, `S3_EXTERNAL_ID` e `S3_KMS_KEY_ID` e recusar chave fixa (R2.9).
+- **Ambiente de desenvolvimento (R6):**
+  - SeaweedFS com TLS por uma CA de desenvolvimento, no padrão do `db-certs` do compose;
+  - bucket criado na subida;
+  - exposição pelo Caddy num host ou numa porta próprios, não num prefixo de caminho, que mudaria o caminho assinado;
+  - suporte a `AES256` a confirmar (pergunta de 24/11/2026 dos requisitos).
+- **R5:** continua sem design (pergunta de 09/11/2026).
+- **Testes:** moto com resposta sem criptografia (R2.8); subida em `prod` sem papel, `ExternalId` ou chave KMS (R2.9); URL com o host público (R3.6); ponta a ponta com download a partir do host (R6.3).

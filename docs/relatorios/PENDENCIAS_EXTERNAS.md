@@ -10,8 +10,8 @@ Nenhum código destas specs pode ser escrito antes da aprovação (regra 1 do `A
 | Spec | O que falta decidir | O que fica bloqueado |
 |---|---|---|
 | 007 · Validação de dados | Aprovar os três arquivos; e-mail da unidade, critério de coordenadas, telefone com máscara e tratamento dos dados antigos | Critério 6.1 ("dado inválido não é gravado"); números reais de pendências no dashboard |
-| 004 · LDAP e OIDC | Aprovar os três arquivos e aceitar o ADR-0003 | Requisito obrigatório da disciplina; mapeamento de grupos para papéis (003/T8) |
-| 005 · Exportação para S3 | Aprovar os três arquivos, aceitar o ADR-0005 e incluir design e tarefa da R5 (assinatura digital), hoje ausentes | Requisito obrigatório da disciplina; objetivo de assinatura digital da disciplina de Criptografia |
+| 004 · LDAP e OIDC | Aprovar os três arquivos e aceitar o ADR-0003. Revisão de 24/11/2026 (G1 dos critérios novos R1.13, R1.14, R3.7–R3.9, R4.3, R4.4 e R5): realm do Keycloak sem federação com o `slapd` e entrada OIDC no front-end da 012 | Requisito obrigatório da disciplina; mapeamento de grupos para papéis (003/T8) |
+| 005 · Exportação para S3 | Aprovar os três arquivos, aceitar o ADR-0005 e incluir design e tarefa da R5 (assinatura digital), hoje ausentes. Revisão de 24/11/2026 (G1 dos critérios novos R2.8, R2.9, R3.6 e R6, e da R3.2 revista: 200 com a URL em vez de 307): criptografia no SeaweedFS, conta AWS para a validação em produção e tela de relatórios | Requisito obrigatório da disciplina; objetivo de assinatura digital da disciplina de Criptografia |
 | 010 · Dados de demonstração | Aprovar a correção do design do conversor (D010-6) | Nada até a planilha chegar |
 | 012 · Frontend | Requisitos aprovados (Vinicius, 09/11/2026); falta aprovar a emenda documental 1 (10/11/2026). G2 do design: dono + Igor Fugagnoli (principal, **disponibilidade a confirmar**) ou Erick Sanches (suplente). Depois, G3 das tarefas pelo dono | Toda a implementação do front (`AGENTS.md`, regra 1) |
 

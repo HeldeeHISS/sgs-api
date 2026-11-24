@@ -9,6 +9,22 @@
 - A permissão `diretorio:sync` já está semeada para o `ADMIN_TI`.
 - As bibliotecas `ldap3` e `authlib` estão em `steering/tech.md`, mas não no `pyproject.toml`: entram na T2 e na T6.
 - A 003/T8 (mapeamento de grupos para papéis) só pode começar depois da T1 desta spec.
+- (revisão de 24/11/2026) A 003/T8 já está escrita na `origin/feat/011-integracao` (commit `71eb072`, com `tests/integration/access/test_mapeamento_grupos.py`), mas não chegou à `main`, que reorganizou `access/api` depois. Ela entra depois da T1 desta spec, trazida para a `main`.
+
+## Ajustes pendentes do G1 (revisão de 24/11/2026, agente; aguarda o dono)
+Não aplicados: as tarefas só mudam depois do G1 e do G2 (`/spec-tarefas`, passo 1). Proposta, a partir dos requisitos revistos:
+- T3: inclui R1.13 (certificado recusado vira `falhou`).
+- T4: inclui R1.14 (lista de grupos), ou tarefa nova logo depois dela.
+- T5: inclui R4.3 e R4.4.
+- T7: inclui R3.7, R3.8, R4.3 e R4.4.
+- Tarefa nova: entrada OIDC na tela de login e mensagem do código de erro (R3.9), com teste em `tests/e2e_front/`.
+- T8: passa a rastrear R5.1–R5.4, com o realm sem federação. O "Pronto quando" ganha a sincronização real e a recusa de certificado (ex.: `tests/e2e/test_sync_ldap.py -m slow`), além do login.
+- Ordem sugerida:
+  1. T8 primeiro, porque o ambiente é o maior risco.
+  2. T1 → 003/T8 → T2 → T3 → T4.
+  3. Em paralelo, depois da T1: T6 → T7 → entrada no front-end.
+  4. T5 depois da T3.
+  5. T9 por último (opcional).
 
 - [ ] T1. Migração com `groups`, `user_groups`, `directory_sync_runs` e colunas `source`/`external_id`
   - Requisitos: R1.5, R1.9

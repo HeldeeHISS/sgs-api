@@ -58,3 +58,20 @@ class OidcPort(Protocol):
 - Unidade: sincronização com `ldap3` `MOCK_SYNC` carregado de um LDIF de teste (criar, atualizar, desativar, grupos); escape de filtro com entradas maliciosas (`*)(uid=*`).
 - Unidade: OIDC com JWKS e `id_token` gerados no teste (nonce errado, `aud` errado, expirado).
 - Integração (marcador `slow`): compose com `slapd` e Keycloak reais, login ponta a ponta.
+
+## Ajustes pendentes do G1 (revisão de 24/11/2026, agente; aguarda o dono)
+Não aplicados: o design só muda depois do G1 dos requisitos revistos (`/spec-design`, passo 1). Com eles aprovados, este design precisa de:
+- **Modelo de dados:** falta a seção. Colunas de `groups` (origem, `external_id`, nome), `user_groups` (com a origem da associação, que a sincronização substitui) e `directory_sync_runs` (status, contagens, conflitos e erro), e a FK de `group_role_mappings.group_id` (003, pergunta de T1).
+- **Rotas:** `GET /api/v1/admin/diretorio/grupos` (R1.14), com a permissão a decidir entre `diretorio:sync` e `papel:assign`.
+- **Ambiente de desenvolvimento (R5):**
+  - o realm do Keycloak passa a ter usuários e grupos próprios, sem a federação com o `slapd` (pergunta de 24/11/2026 dos requisitos);
+  - o `iss` dos tokens tem de ser o mesmo para o navegador, que chega ao Keycloak pelo proxy, e para a API, que chega pela rede interna;
+  - o certificado do `slapd` vem de uma CA de desenvolvimento, no padrão do `db-certs` do compose;
+  - os segredos do laboratório são recusados em `prod` (R5.4).
+- **OIDC:**
+  - `OIDC_REDIRECT_URI` e `FRONTEND_URL` vêm da configuração (R3.8);
+  - o cookie do `state` é apagado no callback, com ou sem sucesso (R3.7);
+  - o JWKS é recarregado uma vez quando o `kid` é desconhecido;
+  - no sucesso, o callback abre a sessão da spec 002 (cookie de refresh) e redireciona ao front-end, que obtém o access token pela renovação (R3.4, R3.9).
+- **Spec 003/T8:** a sincronização (T3), o login LDAP (T5) e o callback (T7) recalculam as atribuições derivadas na mesma transação, pelo contrato que a 003/T8 fixou na `origin/feat/011-integracao` (`recalcular_derivadas_do_usuario(usuario_id, grupos)`), ainda fora da `main`.
+- **Testes:** recusa de certificado com CA errada contra o `slapd` real (R1.13); sincronização real (R5.3); `state` repetido e vencido (R3.7); e-mail em uso e conta inativa (R4.3, R4.4).

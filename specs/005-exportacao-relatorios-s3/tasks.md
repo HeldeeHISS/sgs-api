@@ -9,6 +9,18 @@
 - `boto3` e `openpyxl` estão em `steering/tech.md`, e `moto` nas ferramentas de teste, mas nenhum está no `pyproject.toml`.
 - Falta a tarefa da R5 (assinatura digital). Proposta, a confirmar pelo dono: `T9. Assinatura do hash do relatório, chave própria com rotação e rota pública das chaves de verificação` (R5.1–R5.5).
 
+## Ajustes pendentes do G1 (revisão de 24/11/2026, agente; aguarda o dono)
+Não aplicados: as tarefas só mudam depois do G1 e do G2 (`/spec-tarefas`, passo 1). Proposta, a partir dos requisitos revistos:
+- T3: inclui R2.8 e R3.6 (segundo cliente, para a URL pública).
+- T4: passa a cobrir a R2.9; o "Pronto quando" ganha o caso sem `ExternalId` ou sem chave KMS.
+- T6: R3.2 revisto (200 com `{url, expira_em}`).
+- T8: passa a rastrear R6.1–R6.3, com TLS no armazenamento, exposição pelo proxy e teste ponta a ponta com download a partir do host.
+- A T9 proposta em 09/11/2026 (R5) continua pendente.
+- Tarefa opcional, se houver conta AWS: evidência do envio numa conta real (R2.1, R2.3, R2.9).
+- Ordem sugerida:
+  1. T8 primeiro: confirma TLS, endereço público e criptografia no SeaweedFS.
+  2. Depois T1 → T2 → T3 → T4 → T5 → T6 → T7.
+
 - [ ] T1. Migração `report_jobs` e repositório
   - Requisitos: R1.1, R2.5
   - Pronto quando: `tests/integration/reports/test_report_jobs.py` passa
