@@ -44,7 +44,8 @@ Pontos de encontro desta spec:
 | T8 | C | T6, T10, 004/T8 | compose com as peças compartilhadas da 004 |
 
 ## Tarefas
-- [ ] T0. Base comum das specs 004 e 005. É a mesma tarefa que a 004/T0, num commit `(004/T0, 005/T0)`; a descrição completa está em `specs/004-diretorio-ldap-oidc/tasks.md`.
+- [x] T0. Base comum das specs 004 e 005. É a mesma tarefa que a 004/T0, num commit `(004/T0, 005/T0)`; a descrição completa está em `specs/004-diretorio-ldap-oidc/tasks.md`.
+  - Concluída em 24/11/2026 (`make check` verde). Prova: `tests/unit/core/test_errors.py::test_service_unavailable_responde_503`
   - Frente: base
   - Requisitos: — (infraestrutura das tarefas seguintes)
   - Pronto quando: `uv.lock` travado, `tests/unit/core/test_errors.py::test_service_unavailable_responde_503` passa e o `make check` está verde

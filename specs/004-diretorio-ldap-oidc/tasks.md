@@ -60,7 +60,8 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
 | T14 | B | T4, T5, T7, T10, T11, T13 | ponta a ponta de tudo |
 
 ## Tarefas
-- [ ] T0. Base comum das specs 004 e 005. É a mesma tarefa que a 005/T0, num commit `(004/T0, 005/T0)`.
+- [x] T0. Base comum das specs 004 e 005. É a mesma tarefa que a 005/T0, num commit `(004/T0, 005/T0)`.
+  - Concluída em 24/11/2026 (`make check` verde). Prova: `tests/unit/core/test_errors.py::test_service_unavailable_responde_503`
   - Frente: base
   - Faz:
     - entram `ldap3` 2.9.1, `Authlib` 1.9.x (ADR-0007, emenda 3), `httpx` 0.28.x (passa do grupo `dev` para a execução; ADR-0007, emenda 2), `boto3` 1.43.x e `openpyxl` 3.1.x;
