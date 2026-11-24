@@ -4,14 +4,14 @@
 - O que é: o que falta no projeto e depende de alguém de fora da equipe de desenvolvimento. O resto do MVP está pronto e testado ([RESUMO_STATUS_PROJETO.md](../RESUMO_STATUS_PROJETO.md)).
 - Prazos: validação em 21/11/2026, code freeze em 28/11/2026, SR2 em 05/12/2026.
 
-## 1. Aprovação das specs (dono: Vinicius)
+## 1. Aprovação das specs (dono: Vinicius; nas 004 e 005, também Rafael desde 24/11/2026)
 Nenhum código destas specs pode ser escrito antes da aprovação (regra 1 do `AGENTS.md`). Requisitos e tarefas são aprovados pelo dono; o design precisa do dono e de mais um integrante. As perguntas de cada spec estão na seção "Perguntas em aberto" do `requirements.md`, com uma recomendação.
 
 | Spec | O que falta decidir | O que fica bloqueado |
 |---|---|---|
 | 007 · Validação de dados | Aprovar os três arquivos; e-mail da unidade, critério de coordenadas, telefone com máscara e tratamento dos dados antigos | Critério 6.1 ("dado inválido não é gravado"); números reais de pendências no dashboard |
-| 004 · LDAP e OIDC | Aprovar os três arquivos e aceitar o ADR-0003 | Requisito obrigatório da disciplina; mapeamento de grupos para papéis (003/T8) |
-| 005 · Exportação para S3 | Aprovar os três arquivos, aceitar o ADR-0005 e incluir design e tarefa da R5 (assinatura digital), hoje ausentes | Requisito obrigatório da disciplina; objetivo de assinatura digital da disciplina de Criptografia |
+| 004 · LDAP e OIDC | Requisitos (G1) e design (G2) aprovados pelo Rafael em 24/11/2026, com o ADR-0003 e a emenda 2 do ADR-0007 (httpx) aceitos. Tarefas aprovadas (G3, 24/11/2026), em três frentes com a 005 (`docs/implementacao/`). Falta implementar; a primeira tarefa da frente A é o porte da 003/T8 para a `main` | Requisito obrigatório da disciplina; mapeamento de grupos para papéis (003/T8) |
+| 005 · Exportação para S3 | Requisitos (G1) e design (G2, com a R5) aprovados pelo Rafael em 24/11/2026, com o ADR-0005 aceito. Tarefas aprovadas (G3, 24/11/2026), em três frentes com a 004 (`docs/implementacao/`). Falta implementar. A criptografia no SeaweedFS é conferida no início da frente C (005/T10); a conta AWS é opcional | Requisito obrigatório da disciplina; objetivo de assinatura digital da disciplina de Criptografia |
 | 010 · Dados de demonstração | Aprovar a correção do design do conversor (D010-6) | Nada até a planilha chegar |
 | 012 · Frontend | Requisitos aprovados (Vinicius, 09/11/2026); falta aprovar a emenda documental 1 (10/11/2026). G2 do design: dono + Igor Fugagnoli (principal, **disponibilidade a confirmar**) ou Erick Sanches (suplente). Depois, G3 das tarefas pelo dono | Toda a implementação do front (`AGENTS.md`, regra 1) |
 

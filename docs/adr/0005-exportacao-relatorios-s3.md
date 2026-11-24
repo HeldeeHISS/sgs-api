@@ -1,6 +1,6 @@
 # ADR-0005: Exportação de relatórios para S3 com STS
 
-- Status: Proposto
+- Status: Aceito (Rafael, rafareloM, dono das specs 004 e 005, em 24/11/2026, junto com o G1 da spec 005; registro do agente por autorização expressa na sessão de trabalho)
 - Data: 2026-10-03
 - Requisitos relacionados: RF-07 (parcial), RNF-05, RS-03, RS-04, requisito obrigatório de exportação para nuvem
 

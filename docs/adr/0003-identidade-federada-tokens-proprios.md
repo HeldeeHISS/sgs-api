@@ -1,6 +1,6 @@
 # ADR-0003: Identidade federada (LDAP/OIDC) com tokens próprios
 
-- Status: Proposto
+- Status: Aceito (Rafael, rafareloM, dono das specs 004 e 005, em 24/11/2026, junto com o G1 da spec 004; registro do agente por autorização expressa na sessão de trabalho)
 - Data: 2026-10-03
 - Requisitos relacionados: RS-01, RS-02, requisito obrigatório de LDAP/OIDC
 
