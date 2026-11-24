@@ -63,7 +63,7 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
 - [ ] T0. Base comum das specs 004 e 005. É a mesma tarefa que a 005/T0, num commit `(004/T0, 005/T0)`.
   - Frente: base
   - Faz:
-    - entram `ldap3` 2.9.1, `Authlib` 1.8.x, `httpx` 0.28.x (passa do grupo `dev` para a execução; ADR-0007, emenda 2), `boto3` 1.43.x e `openpyxl` 3.1.x;
+    - entram `ldap3` 2.9.1, `Authlib` 1.9.x (ADR-0007, emenda 3), `httpx` 0.28.x (passa do grupo `dev` para a execução; ADR-0007, emenda 2), `boto3` 1.43.x e `openpyxl` 3.1.x;
     - `moto` 5.x entra no grupo `dev`;
     - sobreposições do mypy para as bibliotecas sem tipos;
     - `ServiceUnavailable(AppError)` com status 503 em `src/core/errors.py`.
