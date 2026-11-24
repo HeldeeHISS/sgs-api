@@ -45,8 +45,11 @@ def _config(ambiente: dict[str, str]) -> subprocess.CompletedProcess[str]:
         text=True,
         check=False,
         timeout=60,
-        cwd=RAIZ / "tests",  # fora de docker/, para não ler um docker/.env local
-        env=sem_borda | ambiente,
+        # Um docker/.env local não pode entrar: o Compose antigo procura o .env no diretório atual
+        # (por isso o cwd fora de docker/); o novo procura ao lado do compose.yml e só obedece à
+        # variável COMPOSE_DISABLE_ENV_FILE.
+        cwd=RAIZ / "tests",
+        env=sem_borda | {"COMPOSE_DISABLE_ENV_FILE": "true"} | ambiente,
     )
 
 
