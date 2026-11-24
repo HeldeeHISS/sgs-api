@@ -1,6 +1,6 @@
 # 005 · Exportação de relatórios para S3 · Requisitos
 
-- Status: Rascunho
+- Status: Aprovado (G1: Rafael, rafareloM, dono, em 24/11/2026, com as recomendações das perguntas de 24/11/2026 aceitas; registro do agente por autorização expressa na sessão de trabalho)
 - Rastreia: RF-07 (parcial), RNF-05, RS-03, RS-04, RS-05, requisito obrigatório "exportação de relatórios para armazenamento em nuvem com mecanismos de autenticação avançados", objetivo "assinaturas digitais e certificados" da disciplina de Criptografia (R5)
 - Dono humano: Vinicius (ViniciusVbm) e Rafael (rafareloM), como responsáveis pelo projeto: a spec não tinha dono registrado (`steering/sdd-workflow.md` § Dono da spec). Linha registrada na revisão de 09/11/2026; Rafael acrescentado em 24/11/2026.
 
@@ -76,8 +76,15 @@ Novo em 24/11/2026. A spec 001 (R1.1) deixou o S3 local do compose para esta spe
 - (revisão de 24/11/2026, agente; aguarda o dono) Validação em produção. O item "autenticação S3 em ambiente de produção" do checklist só se comprova numa conta AWS. Sem conta, a evidência é a R2.1 com moto (`AssumeRole` com `ExternalId` e sessão de até 15 minutos), a R2.9 e o documento da T7. Recomendação: havendo conta, uma tarefa opcional de evidência depois do G3. Antes, confirmar que a conta permite criar papel IAM e chave KMS, o que contas de laboratório costumam restringir.
 - (revisão de 24/11/2026, agente; aguarda o dono) Tela de relatórios. A spec 012 não tem tela para pedir e baixar os relatórios desta spec (a exportação da 012, Grupo-DF15, é outra). Recomendação: demonstrar pela API (`/docs` em dev, ou um script), sem tela nova nesta spec; uma tela seria emenda da 012.
 
+## Decisões do G1 (Rafael, 24/11/2026)
+- Demonstração pela API (`/docs` em dev, ou um script), sem tela nova nesta spec.
+- A validação numa conta AWS real é opcional e depende de haver conta; sem ela, a evidência é a R2.1 com moto, a R2.9 e o documento da T7.
+- A criptografia no SeaweedFS é conferida na primeira hora da T8; se faltar, a alternativa volta para decisão antes de seguir.
+- O ADR-0005 passa a `Aceito`.
+- As recomendações de 09/11/2026 (SeaweedFS no compose, guarda de 90 dias, assinatura ES256 com chave própria e chaves públicas em JWK) entram no design e são confirmadas no G2.
+
 ## Revisão de 24/11/2026: checklist da disciplina
-- Quem e por quê: agente, a pedido do Rafael; aguarda o G1 do dono. Comparação dos itens de exportação do checklist de acompanhamento acadêmico (`docs/requisitos-iam.docx`, § 4, fora do Git nesta data) com os critérios desta spec.
+- Quem e por quê: agente, a pedido do Rafael; G1 aprovado pelo Rafael no mesmo dia (seção acima). Comparação dos itens de exportação do checklist de acompanhamento acadêmico (`docs/requisitos-iam.docx`, § 4, fora do Git nesta data) com os critérios desta spec.
 - O checklist marca como concluídos itens que ainda não têm código. A situação real está em `docs/REQUISITOS_EVIDENCIAS.md` (linha "Exportação para S3"): nada desta spec foi implementado.
 - Status sem mudança: o agente não aprova. Design e tarefas não foram reescritos antes do G1 (`/spec-design`, passo 1); os ajustes que os critérios novos pedem estão no fim de cada arquivo.
 - Critério existente que mudou: a R3.2 passou de "307 para a URL" para "200 com a URL". Com 307, o download pelo navegador não funciona:

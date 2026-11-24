@@ -1,6 +1,6 @@
 # 004 · Diretório LDAP e OIDC · Requisitos
 
-- Status: Rascunho
+- Status: Aprovado (G1: Rafael, rafareloM, dono, em 24/11/2026, com as recomendações das perguntas de 24/11/2026 aceitas; registro do agente por autorização expressa na sessão de trabalho)
 - Rastreia: RS-01, RS-02, RS-03, RS-05, RS-08, requisito obrigatório "consumo de credenciais via LDAP e OIDC para popular as tabelas locais dos usuários e grupos"
 - Dono humano: Vinicius (ViniciusVbm) e Rafael (rafareloM), como responsáveis pelo projeto: a spec não tinha dono registrado (`steering/sdd-workflow.md` § Dono da spec). Linha registrada na revisão de 09/11/2026; Rafael acrescentado em 24/11/2026.
 
@@ -73,8 +73,14 @@ Novo em 24/11/2026. A spec 001 (R1.1) deixou o LDAP e o provedor OIDC do compose
 - (revisão de 24/11/2026, agente; aguarda o dono) Federação no provedor de laboratório. O design põe no Keycloak uma federação LDAP que aponta para o mesmo `slapd` da sincronização. Assim, a mesma pessoa chega como `source = ldap` (pela sincronização) e como `source = oidc` (pelo login), e `users.email` é único: pela R4.3, o login OIDC de todo usuário já sincronizado seria recusado. Recomendação: no laboratório, o realm tem usuários e grupos próprios, sem federação (R5.2), e unir contas fica fora do escopo. Se a Secretaria usar o mesmo diretório nas duas origens, o vínculo pelo identificador do diretório (uma claim com o `entryUUID`) entra numa emenda.
 - (revisão de 24/11/2026, agente; aguarda o dono) A R3.9 muda a tela de login, que é da spec 012 (`Aprovado`; o dono também é o Vinicius), e a 012 não prevê entrada OIDC. Recomendação: a tarefa fica nesta spec, com nota de referência no design da 012, como a 013 fez com a 001 e a 011. A outra via é uma emenda funcional da 012, com G1 próprio. O retorno já se encaixa na abertura atual do front-end, que chama a renovação antes de mostrar o login (design da 012, passo "Abertura").
 
+## Decisões do G1 (Rafael, 24/11/2026)
+- Realm do Keycloak de laboratório com usuários e grupos próprios, sem federação com o `slapd`; unir contas de origens diferentes fica fora do escopo.
+- A entrada OIDC no front-end (R3.9) é tarefa desta spec, com nota de referência no design da 012.
+- O ADR-0003 passa a `Aceito`.
+- Continuam abertas, sem bloquear o design: AD ou OpenLDAP na Secretaria (o design suporta os dois por configuração) e o atributo de distrito ou unidade.
+
 ## Revisão de 24/11/2026: checklist da disciplina
-- Quem e por quê: agente, a pedido do Rafael; aguarda o G1 do dono. Comparação dos itens de LDAP e OIDC do checklist de acompanhamento acadêmico (`docs/requisitos-iam.docx`, § 3, fora do Git nesta data) com os critérios desta spec.
+- Quem e por quê: agente, a pedido do Rafael; G1 aprovado pelo Rafael no mesmo dia (seção acima). Comparação dos itens de LDAP e OIDC do checklist de acompanhamento acadêmico (`docs/requisitos-iam.docx`, § 3, fora do Git nesta data) com os critérios desta spec.
 - O checklist marca como concluídos itens que ainda não têm código. A situação real está em `docs/REQUISITOS_EVIDENCIAS.md` (linhas de grupos e de LDAP/OIDC): nada desta spec foi implementado. O item "19 testes automatizados" não é requisito e fica de fora.
 - Status sem mudança: o agente não aprova. Design e tarefas não foram reescritos antes do G1 (`/spec-design`, passo 1); os ajustes que os critérios novos pedem estão no fim de cada arquivo.
 

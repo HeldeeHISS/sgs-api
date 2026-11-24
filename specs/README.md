@@ -15,8 +15,8 @@ As specs 008, 009 e 010 e a emenda T21–T22 da 011 foram implementadas antes do
 | [001-fundacao](001-fundacao/) | Esqueleto da API, config, banco, erros, logs, auditoria base, CI | base para todos | Aprovado |
 | [002-autenticacao](002-autenticacao/) | Login local, 2FA TOTP, tokens, sessões | obrigatório: RBAC (autenticação) | Aprovado |
 | [003-rbac](003-rbac/) | Papéis, permissões, escopo, `/me`, administração | obrigatório: RBAC | Aprovado (Rafael); emenda de `dashboard:read` aprovada (Vinicius, 09/11); dono: Vinicius |
-| [004-diretorio-ldap-oidc](004-diretorio-ldap-oidc/) | Bind e sincronização LDAP, login OIDC, grupos | obrigatório: LDAP/OIDC | Rascunho |
-| [005-exportacao-relatorios-s3](005-exportacao-relatorios-s3/) | Relatórios CSV/XLSX, STS, S3, URL pré-assinada | obrigatório: exportação para nuvem | Rascunho |
+| [004-diretorio-ldap-oidc](004-diretorio-ldap-oidc/) | Bind e sincronização LDAP, login OIDC, grupos | obrigatório: LDAP/OIDC | Requisitos aprovados (Rafael, 24/11); design e tarefas em Rascunho; G2 só do dono (exceção de 24/11); donos: Vinicius e Rafael |
+| [005-exportacao-relatorios-s3](005-exportacao-relatorios-s3/) | Relatórios CSV/XLSX, STS, S3, URL pré-assinada | obrigatório: exportação para nuvem | Requisitos aprovados (Rafael, 24/11); design e tarefas em Rascunho; G2 só do dono (exceção de 24/11); donos: Vinicius e Rafael |
 | [006-cadastro-unidades](006-cadastro-unidades/) | Unidades, equipamentos, serviços, busca, referências | MVP: cadastro, consulta, atualização | Aprovado |
 | [007-validacao-dados](007-validacao-dados/) | Regras fixas e configuráveis, 422 claro, pendências | MVP: validação automática | Rascunho |
 | [008-historico-alteracoes](008-historico-alteracoes/) | Histórico por unidade, trilha geral, integridade | MVP: histórico (auditoria) | Aprovado (Vinicius, 09/11); T6 concluída (09/11) |
