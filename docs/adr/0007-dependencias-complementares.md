@@ -1,6 +1,6 @@
 # ADR-0007: Dependências complementares da stack (Uvicorn, limits, pytest-cov)
 
-- Status: Aceito (Rafael, 03/10/2026); emenda de 09/11/2026 aceita (Vinicius, 09/11/2026)
+- Status: Aceito (Rafael, 03/10/2026); emenda de 09/11/2026 aceita (Vinicius, 09/11/2026); emenda 2 de 24/11/2026 aceita (Rafael, rafareloM, dono das specs 004 e 005, com o G2 da 004; registro do agente por autorização expressa na sessão de trabalho)
 - Data: 2026-10-03
 - Requisitos relacionados: RS-09, RNF-06; specs 001 (R1.1, R7.1) e 002 (R1.5)
 
@@ -34,3 +34,8 @@ Adicionar à stack, com a mesma regra de versão das demais (série fixa, `uv.lo
 - **slowapi → limits.** O slowapi aplica o limite por decorador, com um `Limiter` global criado na importação do módulo, o que não combina com a raiz de composição do projeto (um app por `create_app`, um app por teste). A 002/T7 usa direto a biblioteca `limits` (o motor do slowapi), num limitador por app em `src/core/limite.py`, como este ADR já previa ("o limite vira uma dependência FastAPI própria"). As rotas não mudam.
 - **pwdlib[argon2] e pyotp** entram no `pyproject.toml` na 002/T3 e T5, como a `steering/tech.md` prevê.
 - Com o aceite, `steering/tech.md` passou a listar `limits 5.8.x` no lugar de `slowapi 0.1.x`. O título passou a citar `limits` (antes: "Uvicorn, slowapi, pytest-cov"). O texto original deste ADR, que escolheu o slowapi, fica como registro da decisão de 03/10/2026.
+
+## Emenda 2 (24/11/2026; aceita pelo Rafael em 24/11/2026, com o G2 da 004)
+- **httpx em execução.** O login OIDC da spec 004 usa o cliente assíncrono da Authlib (`authlib.integrations.httpx_client`), que precisa do `httpx`. Hoje o `httpx` está só no grupo `dev` (cliente dos testes). A emenda o passa às dependências de execução, na série já travada (0.28.x). Ele entra no `pyproject.toml` na tarefa da 004 que implementa o adaptador OIDC.
+- **Por que não outra coisa.** O cliente `requests` da Authlib é bloqueante e também fica fora da stack. Montar a troca do código com `urllib` reimplementa timeout, TLS e formulário. Detalhes no design da 004, D004-4.
+- Com o aceite, `steering/tech.md` passou a listar `httpx 0.28.x` na tabela da stack, com a nota "cliente HTTP da Authlib (004)".

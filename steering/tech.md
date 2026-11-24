@@ -20,6 +20,7 @@
 | openpyxl | 3.1.x |
 | Uvicorn | 0.54.x (ADR-0007) |
 | limits | 5.8.x (ADR-0007, emenda de 09/11/2026: substitui o slowapi) |
+| httpx | 0.28.x (ADR-0007, emenda 2 de 24/11/2026: cliente HTTP da Authlib, spec 004) |
 
 Ferramentas: uv, ruff, mypy, import-linter, pytest (+ pytest-asyncio, pytest-cov, httpx, testcontainers, moto, hypothesis, schemathesis), bandit, pip-audit, pre-commit. O pytest-cov entrou pelo ADR-0007.
 
