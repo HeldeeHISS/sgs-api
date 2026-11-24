@@ -1,0 +1,49 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run *)",
+      "Bash(uv sync)",
+      "Bash(uv sync *)",
+      "Bash(make check)",
+      "Bash(make openapi)",
+      "Bash(make migrate *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(git fetch*)",
+      "Bash(git rebase origin/feat/004-005)",
+      "Bash(git rebase --continue)",
+      "Bash(git rebase --abort)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git cherry-pick *)",
+      "Bash(git stash*)",
+      "Bash(git push origin HEAD:feat/004-005)",
+      "Bash(docker compose -f docker/compose.yml *)",
+      "Bash(docker compose -f docker/compose.test.yml *)",
+      "Edit(src/**)",
+      "Edit(tests/**)",
+      "Edit(migrations/**)",
+      "Edit(specs/**)",
+      "Edit(docs/**)",
+      "Edit(contracts/**)",
+      "Edit(docker/**)",
+      "Edit(frontend/app/**)",
+      "Edit(.env.example)",
+      "Edit(README.md)"
+    ],
+    "deny": [
+      "Bash(git push origin main*)",
+      "Bash(git push origin HEAD:main*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f*)",
+      "Bash(git commit *--no-verify*)",
+      "Edit(.claude/**)",
+      "Read(secrets/**)"
+    ]
+  }
+}

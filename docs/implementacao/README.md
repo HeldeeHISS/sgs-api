@@ -11,6 +11,8 @@
 | B · OIDC e laboratório | [frente-b-oidc-laboratorio.md](frente-b-oidc-laboratorio.md) | Keycloak e `slapd` no compose, login OIDC, botão no front, assinatura dos relatórios, demonstração ponta a ponta da 004 |
 | C · Relatórios | [frente-c-relatorios.md](frente-c-relatorios.md) | Exportação CSV/XLSX, envio ao S3 com STS, download por URL pré-assinada, SeaweedFS no compose |
 
+**Com agentes, uma pessoa por frente:** [agentes.md](agentes.md) traz a preparação da máquina, as permissões do Claude Code ([claude-settings.exemplo.json](claude-settings.exemplo.json)), o prompt de cada tarefa e o que revisar antes de integrar.
+
 ## Regras que não mudam
 1. **A spec é a fonte da verdade** (`AGENTS.md`). Código que diverge da spec é bug. Se a spec estiver errada, pare e fale com os donos: a mudança vai primeiro para a spec (`Em revisão`), depois para o código.
 2. **Uma tarefa por vez, com teste antes** (TDD). O teste cita o critério na docstring (`"""004/R1.7"""`), e a tarefa só fica `[x]` com o teste de "Pronto quando" verde e o `make check` verde.
@@ -57,7 +59,7 @@ cd ../sgs-frente-a
 uv sync
 ```
 
-O `docker/.env` de cada *worktree* usa uma subnet própria (por exemplo, `10.231.2.0/28` na frente B e `10.231.3.0/28` na C). As portas do proxy também mudam (`SGS_HTTP_PORT`, `SGS_HTTPS_PORT` e as URLs públicas, ver o guia da frente B). Assim, duas frentes podem subir o compose ao mesmo tempo.
+Cada pessoa roda a sua frente na própria máquina, e os valores padrão servem. Se duas frentes rodarem na mesma máquina, o `docker/.env` de cada *worktree* usa uma subnet própria (por exemplo, `10.231.2.0/28` na frente B e `10.231.3.0/28` na C). As portas do proxy também mudam (`SGS_HTTP_PORT`, `SGS_HTTPS_PORT` e as URLs públicas, ver o guia da frente B). Assim, as duas sobem o compose ao mesmo tempo.
 
 ## Ciclo de uma tarefa
 1. **Confira se pode começar.** As tarefas de "Bloqueada por" já estão integradas no `feat/004-005` (`git log origin/feat/004-005`).
