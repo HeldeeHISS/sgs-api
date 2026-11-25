@@ -166,7 +166,7 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
     - a claim `groups` no `id_token` de um usuário de exemplo.
   - Concluída em 25/11/2026 (`make check` verde). Prova: `tests/e2e/test_lab_keycloak.py::test_issuer_e_o_mesmo_pela_descoberta_publica_e_pela_interna`, `::test_cliente_exige_pkce_s256_e_a_redirect_uri_exata` e `::test_id_token_traz_a_claim_groups` (`-m slow`). O `iss` é o mesmo nos dois caminhos.
   - Nota de execução (Rafael, 25/11/2026): Keycloak 26.8.2 em `start --import-realm`, e não em `start-dev` (design § Keycloak). O perfil dev abre HTTP na 8080 mesmo com `KC_HTTP_ENABLED=false`; `test_keycloak_so_atende_https_na_rede` confere. Fora da lista da frente, com autorização: `tests/architecture/test_proxy_confiavel.py` (redes e suíte novas).
-- [ ] T13. Laboratório: `slapd` só com LDAPS
+- [x] T13. Laboratório: `slapd` só com LDAPS
   - Frente: B
   - Faz:
     - `docker/ldap/Dockerfile` (Debian e `slapd`);
@@ -180,6 +180,8 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
     - busca da conta de serviço por LDAPS com a CA de laboratório;
     - sem porta LDAP em texto claro;
     - escrita recusada para a conta de serviço.
+  - Concluída em 25/11/2026 (`make check` verde). Prova: `tests/e2e/test_lab_ldap.py::test_conta_de_servico_busca_por_ldaps_com_a_ca_de_laboratorio`, `::test_sem_porta_ldap_em_texto_claro` e `::test_conta_de_servico_nao_escreve_nem_le_senhas` (`-m slow`).
+  - Nota de execução (Rafael, 25/11/2026): OpenLDAP 2.6.10 do Debian trixie, como uid 389. A carga inicial fica no volume `ldap-data`, para os `entryUUID` acompanharem o `db-data` entre as subidas. O *healthcheck* espera a 636, que só abre depois da carga. Sem o *overlay* `refint` (o design não o pede): apagar uma pessoa no roteiro deixa o DN dela no `member` do grupo. Fora da lista da frente, com autorização: `tests/architecture/test_proxy_confiavel.py` (serviço `ldap` e suíte nova).
 - [ ] T6. Configuração OIDC e validação do `id_token`
   - Frente: B
   - Faz:

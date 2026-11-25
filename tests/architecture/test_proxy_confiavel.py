@@ -105,11 +105,12 @@ def test_compose_exige_subnet_e_ip_do_proxy() -> None:
         "db": {"dados"},
         "api": {"borda", "dados", "integracoes"},
         "keycloak": {"integracoes", "exposicao"},
+        "ldap": {"integracoes"},
         "proxy": {"borda", "exposicao"},
     }
     assert redes["api"] & redes["proxy"] == {"borda"}
     assert config["networks"]["integracoes"]["internal"] is True
-    for servico in ("api", "db", "keycloak"):
+    for servico in ("api", "db", "keycloak", "ldap"):
         assert "ports" not in servicos[servico], servico
 
 
@@ -122,6 +123,7 @@ def test_subnets_das_suites_sao_unicas_e_fora_dos_pools_do_docker() -> None:
         "FRONT_UI": RAIZ / "tests" / "e2e_front" / "conftest.py",
         "AUDITORIA": RAIZ / "tests" / "e2e" / "test_auditoria_proxy.py",
         "KEYCLOAK": RAIZ / "tests" / "e2e" / "test_lab_keycloak.py",
+        "LDAP": RAIZ / "tests" / "e2e" / "test_lab_ldap.py",
     }
     assert set(suites) == set(SUBNETS)
     for suite, arquivo in suites.items():

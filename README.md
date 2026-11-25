@@ -20,7 +20,7 @@ Visão geral para o grupo e os professores: o [relatório geral do projeto na Et
 Os relatórios de 09/11 e 10/11/2026 são **registros históricos**, preservados sem alteração. Eles não refletem a interface da Etapa 06 nem a aprovação do cenário D das 30 tuplas (ver § Registros históricos).
 
 ## Subir o ambiente (Docker)
-Pré-requisito: Docker 26 ou mais novo, com Compose v2 (o compose monta partes de um volume com `subpath`). O compose sobe a API, o PostgreSQL 17 com TLS, um proxy TLS (Caddy) e o Keycloak de laboratório (spec 004). O LDAP e o S3 local entram na 004/T13 e na 005/T8.
+Pré-requisito: Docker 26 ou mais novo, com Compose v2 (o compose monta partes de um volume com `subpath`). O compose sobe a API, o PostgreSQL 17 com TLS, um proxy TLS (Caddy) e, da spec 004, o Keycloak e o LDAP de laboratório. O S3 local entra na 005/T8.
 
 ```bash
 mkdir -p secrets
@@ -51,6 +51,11 @@ curl -k https://localhost/health/ready      # {"status":"ok"}
   - Cliente `sgs-api`: confidencial, PKCE S256, segredo `sgs-lab-exemplo-oidc`. Console em `https://keycloak.localhost/admin`, usuário `admin`, senha `sgs-lab-exemplo-admin`.
   - Essas senhas são fixas, versionadas e só do laboratório (D004-15). O marcador `exemplo` faz a API recusá-las em `prod` (004/R5.4).
   - O serviço `servicos-certs` gera no volume de mesmo nome, como o `db-certs` faz para o banco, uma CA de laboratório e os certificados de `ldap`, `keycloak` e `s3`. A chave da CA é descartada.
+- **Diretório LDAP de laboratório (spec 004, R5.1).** OpenLDAP (`docker/ldap/`) só com LDAPS, sem porta no host: a API chega a ele em `ldaps://ldap:636`, pela rede `integracoes`, conferindo o certificado pela CA de laboratório. A carga inicial (`docker/ldap/seed.ldif`) entra na primeira subida e fica no volume `ldap-data`; para voltar a ela, apague o volume (`down -v`).
+  - Conta de serviço `cn=sgs-sync,ou=servicos,dc=recife,dc=pe,dc=gov,dc=br`, só leitura, senha `sgs-lab-exemplo-bind`.
+  - Usuários de exemplo em `ou=pessoas`, um por papel da spec 003, cada um num grupo `groupOfNames` de `ou=grupos` cujo nome diz o papel e o escopo: `ldap.admin.ti` (`sgs-admin-ti`), `ldap.gestor.dados` (`sgs-gestor-dados`), `ldap.coord.tecnico` (`sgs-coord-tecnico-aps`), `ldap.tecnico.ds3` (`sgs-tecnico-ds3`), `ldap.gestor.unidade` (`sgs-gestor-unidade-cnes-1000003`), `ldap.diretoria` (`sgs-diretoria`) e `ldap.auditor` (`sgs-auditor`). Mais `ldap.temporario`, também em `sgs-tecnico-ds3`, para a demonstração da desativação. Senha de todos: `sgs-lab-exemplo-usuario`, guardada em `{SSHA}`.
+  - Alterações no diretório, como o usuário do contêiner, pelo `ldapi` (o mesmo caminho da carga inicial): `docker compose -f docker/compose.yml exec ldap ldapdelete -Y EXTERNAL -H ldapi:/// uid=ldap.temporario,ou=pessoas,dc=recife,dc=pe,dc=gov,dc=br`.
+  - Essas senhas também são fixas, versionadas e só do laboratório (D004-15), e a API as recusa em `prod` (004/R5.4).
 - **Portas e endereços públicos.** Com `SGS_HTTPS_PORT` diferente de 443, ajuste junto, em `docker/.env`, `SGS_PUBLIC_URL` e `SGS_PUBLIC_KEYCLOAK_URL` (padrões `https://localhost` e `https://keycloak.localhost`). Elas alimentam ao mesmo tempo o Keycloak (endereço público e *redirect URI*) e a API (`OIDC_ISSUER`, `OIDC_REDIRECT_URI`, `FRONTEND_URL` e a origem padrão de `CORS_ORIGINS`). Exemplo: `SGS_HTTPS_PORT=8443`, `SGS_PUBLIC_URL=https://localhost:8443` e `SGS_PUBLIC_KEYCLOAK_URL=https://keycloak.localhost:8443`.
 - Parar: `docker compose -f docker/compose.yml down` (com `-v`, apaga também o banco).
 

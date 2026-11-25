@@ -23,6 +23,7 @@ SUBNETS = {
     "FRONT_UI": "10.231.12.0/28",  # tests/e2e_front/conftest.py
     "AUDITORIA": "10.231.13.0/28",  # tests/e2e/test_auditoria_proxy.py
     "KEYCLOAK": "10.231.14.0/28",  # tests/e2e/test_lab_keycloak.py
+    "LDAP": "10.231.15.0/28",  # tests/e2e/test_lab_ldap.py
 }
 """Suíte → subnet padrão. Os stacks de desenvolvimento usam 10.231.1.0/28 (.env.example)."""
 

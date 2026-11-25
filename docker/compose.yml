@@ -1,7 +1,8 @@
 # Ambiente local (spec 001, R1.1): API, PostgreSQL e proxy TLS.
 # A API conecta ao banco por TLS com verificação do certificado e do nome (spec 011, R10.3).
-# Laboratório da spec 004 (design § Ambiente): Keycloak em keycloak.localhost, pelo proxy; LDAP e
-# S3 local entram na 004/T13 e na 005/T8. A API não depende deles para ficar saudável.
+# Laboratório da spec 004 (design § Ambiente): Keycloak em keycloak.localhost, pelo proxy, e LDAP
+# só por LDAPS, sem porta no host; o S3 local entra na 005/T8. A API não depende deles para ficar
+# saudável.
 # Subir: docker compose -f docker/compose.yml up -d --build --wait (ver README).
 # As senhas abaixo são de desenvolvimento; a API recusa iniciar com elas em prod (001/R2.3).
 #
@@ -117,6 +118,22 @@ services:
       OIDC_REDIRECT_URI: ${SGS_PUBLIC_URL:-https://localhost}/api/v1/auth/oidc/callback
       FRONTEND_URL: ${SGS_PUBLIC_URL:-https://localhost}/
       OIDC_GROUPS_CLAIM: groups
+      # LDAP do laboratório (spec 004, design § Configuração): LDAPS pela rede `integracoes`,
+      # conferido pela CA de laboratório. A senha de exemplo é recusada em prod (004/R5.4).
+      LDAP_URL: ldaps://ldap:636
+      LDAP_START_TLS: "false"
+      LDAP_CA_FILE: /certs-servicos/ca.crt
+      LDAP_BIND_DN: cn=sgs-sync,ou=servicos,dc=recife,dc=pe,dc=gov,dc=br
+      LDAP_BIND_PASSWORD: sgs-lab-exemplo-bind
+      LDAP_USER_BASE: ou=pessoas,dc=recife,dc=pe,dc=gov,dc=br
+      LDAP_USER_FILTER: (objectClass=inetOrgPerson)
+      LDAP_GROUP_BASE: ou=grupos,dc=recife,dc=pe,dc=gov,dc=br
+      LDAP_GROUP_FILTER: (objectClass=groupOfNames)
+      LDAP_ATTR_LOGIN: uid
+      LDAP_ATTR_EMAIL: mail
+      LDAP_ATTR_NAME: cn
+      LDAP_ATTR_ID: entryUUID
+      LDAP_ATTR_MEMBER: member
     volumes:
       # Só o certificado da CA. O usuário da API tem o mesmo uid do postgres (999); por isso a
       # chave do servidor não pode ser montada aqui.
@@ -153,6 +170,51 @@ services:
         - >-
           import sys, urllib.request;
           sys.exit(urllib.request.urlopen("http://127.0.0.1:8000/health/ready", timeout=3).status != 200)
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  # Diretório LDAP de laboratório (spec 004, R5.1; design § `slapd`): OpenLDAP só com LDAPS (636)
+  # e ldapi, sem porta no host; a API chega a ele pela rede `integracoes`. A carga inicial
+  # (docker/ldap/seed.ldif) entra na primeira subida e fica no volume ldap-data; para recomeçar
+  # do arquivo, apague o volume. Usuários, grupos e senhas no README. O alias `ldap-nome-errado`
+  # chega ao mesmo servidor por um nome fora do certificado: serve só ao teste da R1.13.
+  ldap:
+    build:
+      context: ./ldap
+    networks:
+      integracoes:
+        aliases: [ldap-nome-errado]
+    volumes:
+      - ldap-data:/var/lib/ldap
+      # Certificado e chave do servidor (a chave tem o uid 389 do usuário do contêiner).
+      - type: volume
+        source: servicos-certs
+        target: /certs
+        read_only: true
+        volume:
+          subpath: ldap
+      # A CA de laboratório, só para os ldap-utils de dentro do contêiner (testes e roteiro).
+      - type: volume
+        source: servicos-certs
+        target: /certs-servicos
+        read_only: true
+        volume:
+          subpath: ca
+    depends_on:
+      servicos-certs:
+        condition: service_completed_successfully
+    # Pronto quando o slapd final escuta a 636 (027C): a carga inicial roda antes, só no ldapi.
+    # Sem operação LDAP, para não encher o log das operações a cada verificação.
+    healthcheck:
+      test:
+        - CMD
+        - awk
+        - $$4 == "0A" && $$2 ~ /:027C$$/ {ok = 1} END {exit !ok}
+        - /proc/net/tcp
+        - /proc/net/tcp6
       interval: 5s
       timeout: 5s
       retries: 20
@@ -263,5 +325,6 @@ volumes:
   db-data:
   db-certs:
   servicos-certs:
+  ldap-data:
   caddy-data:
   caddy-config:
