@@ -342,3 +342,124 @@ def test_mfa_so_pode_ser_desligado_em_dev(ambiente: DefinirAmbiente) -> None:
     ambiente(VARIAVEIS_PROD | {"MFA_OBRIGATORIO": "false"})
     with pytest.raises(SettingsError, match="MFA_OBRIGATORIO"):
         load_settings()
+
+
+# OIDC (spec 004, design § Configuração): com OIDC_ISSUER, as demais variáveis passam a valer.
+VARIAVEIS_OIDC = {
+    "OIDC_ISSUER": "https://keycloak.localhost/realms/sgs",
+    "OIDC_CLIENT_ID": "sgs-api",
+    "OIDC_CLIENT_SECRET": "sgs-lab-exemplo-oidc",
+    "OIDC_REDIRECT_URI": "https://localhost/api/v1/auth/oidc/callback",
+    "FRONTEND_URL": "https://localhost/",
+    "CORS_ORIGINS": "https://localhost,https://localhost:3000",
+}
+
+
+def test_oidc_fica_desligado_sem_oidc_issuer(ambiente: DefinirAmbiente) -> None:
+    """004/R3.2 (design § Configuração: sem OIDC_ISSUER, o OIDC fica desligado e as demais
+    variáveis OIDC não são conferidas)"""
+    ambiente({**VARIAVEIS_DEV, "OIDC_ISSUER": "", "FRONTEND_URL": "http://fora-do-cors"})
+
+    settings = load_settings()
+
+    assert settings.oidc_issuer is None
+    assert settings.oidc_discovery_endpoint is None
+
+
+def test_oidc_completo_e_aceito_com_descoberta_padrao(ambiente: DefinirAmbiente) -> None:
+    """004/R3.2, R3.6, R3.8 (a descoberta padrão é a do emissor; os `acr` vêm em lista)"""
+    ambiente({**VARIAVEIS_DEV, **VARIAVEIS_OIDC, "OIDC_REQUIRED_ACR": "mfa, gold"})
+
+    settings = load_settings()
+
+    assert settings.oidc_issuer == "https://keycloak.localhost/realms/sgs"
+    assert settings.oidc_discovery_endpoint == (
+        "https://keycloak.localhost/realms/sgs/.well-known/openid-configuration"
+    )
+    assert settings.oidc_redirect_uri == "https://localhost/api/v1/auth/oidc/callback"
+    assert settings.frontend_url == "https://localhost/"
+    assert settings.oidc_groups_claim == "groups"
+    assert settings.oidc_required_acr == ("mfa", "gold")
+
+
+def test_oidc_usa_a_url_de_descoberta_configurada(ambiente: DefinirAmbiente) -> None:
+    """004/R3.2 (a descoberta pode ir pela rede interna; o `iss` continua o público)"""
+    interna = "https://keycloak:8443/realms/sgs/.well-known/openid-configuration"
+    ambiente({**VARIAVEIS_DEV, **VARIAVEIS_OIDC, "OIDC_DISCOVERY_URL": interna})
+
+    assert load_settings().oidc_discovery_endpoint == interna
+
+
+@pytest.mark.parametrize(
+    "variavel", ["OIDC_CLIENT_ID", "OIDC_CLIENT_SECRET", "OIDC_REDIRECT_URI", "FRONTEND_URL"]
+)
+def test_oidc_incompleto_recusa_a_subida_e_nomeia_a_variavel(
+    ambiente: DefinirAmbiente, variavel: str
+) -> None:
+    """004/R3.8 (retorno e destino só da configuração, obrigatórios com OIDC_ISSUER)"""
+    ambiente({**VARIAVEIS_DEV, **VARIAVEIS_OIDC, variavel: ""})
+
+    with pytest.raises(SettingsError, match=f"{variavel}: obrigatória com OIDC_ISSUER"):
+        load_settings()
+
+
+@pytest.mark.parametrize(
+    ("variavel", "valor"),
+    [
+        ("OIDC_ISSUER", "http://keycloak.localhost/realms/sgs"),
+        ("OIDC_DISCOVERY_URL", "http://keycloak:8080/realms/sgs/.well-known/openid-configuration"),
+        ("OIDC_REDIRECT_URI", "http://localhost/api/v1/auth/oidc/callback"),
+        ("OIDC_REDIRECT_URI", "https://localhost/api/v1/auth/oidc/outro"),
+        ("OIDC_REDIRECT_URI", "https://localhost/api/v1/auth/oidc/callback/"),
+        ("FRONTEND_URL", "http://localhost/"),
+        ("FRONTEND_URL", "https://localhost"),
+        ("FRONTEND_URL", "https://localhost/?volta=https://atacante.example"),
+        ("FRONTEND_URL", "https://localhost/#inicio"),
+        ("OIDC_CA_FILE", "/nao/existe/ca.crt"),
+    ],
+)
+def test_oidc_recusa_endereco_sem_https_ou_fora_do_formato(
+    ambiente: DefinirAmbiente, variavel: str, valor: str
+) -> None:
+    """004/R3.2, R3.8 (HTTPS até o provedor; callback no caminho fixo; destino sem query)"""
+    ambiente({**VARIAVEIS_DEV, **VARIAVEIS_OIDC, variavel: valor})
+
+    with pytest.raises(SettingsError, match=variavel):
+        load_settings()
+
+
+def test_oidc_recusa_frontend_url_fora_de_cors_origins(ambiente: DefinirAmbiente) -> None:
+    """004/R3.8, R3.9 (o front renova a sessão da origem de FRONTEND_URL, que o anti-CSRF do
+    refresh confere em CORS_ORIGINS)"""
+    ambiente({**VARIAVEIS_DEV, **VARIAVEIS_OIDC, "FRONTEND_URL": "https://sgs.localhost/"})
+
+    with pytest.raises(SettingsError, match=r"FRONTEND_URL: a origem https://sgs\.localhost "):
+        load_settings()
+
+
+@pytest.mark.parametrize("segredo", ["sgs-lab-exemplo-oidc", "changeme", "admin"])
+def test_prod_recusa_segredo_oidc_de_exemplo(ambiente: DefinirAmbiente, segredo: str) -> None:
+    """004/R5.4 (a mesma regra das senhas de exemplo da 001/R2.3)"""
+    ambiente({**VARIAVEIS_PROD, **VARIAVEIS_OIDC, "OIDC_CLIENT_SECRET": segredo})
+
+    with pytest.raises(SettingsError, match="OIDC_CLIENT_SECRET: segredo de exemplo") as erro:
+        load_settings()
+
+    assert segredo not in str(erro.value)
+
+
+def test_prod_aceita_segredo_oidc_de_verdade(ambiente: DefinirAmbiente) -> None:
+    """004/R5.4"""
+    ambiente({**VARIAVEIS_PROD, **VARIAVEIS_OIDC, "OIDC_CLIENT_SECRET": "Qm7-segredo-real-9x"})
+
+    assert load_settings().oidc_client_secret is not None
+
+
+def test_segredo_oidc_de_exemplo_vale_fora_de_prod(ambiente: DefinirAmbiente) -> None:
+    """004/R5.4 (o laboratório usa o segredo de exemplo; a recusa vale só em prod)"""
+    ambiente({**VARIAVEIS_DEV, **VARIAVEIS_OIDC})
+
+    segredo = load_settings().oidc_client_secret
+
+    assert segredo is not None
+    assert segredo.get_secret_value() == "sgs-lab-exemplo-oidc"

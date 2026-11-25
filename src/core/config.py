@@ -53,6 +53,8 @@ EXAMPLE_MARKERS = ("troque", "exemplo", "example", "changeme", "change-me")
 URL_TLS_PARAMS = frozenset({"ssl", "sslmode", "sslrootcert", "sslcert", "sslkey"})
 # `kid` vai no cabeçalho de todo JWT e no JWKS: curto e sem caracteres especiais.
 JWT_KID = re.compile(r"[A-Za-z0-9._-]{1,64}")
+# Retorno do provedor OIDC: só o callback da API (004/R3.8, design § Configuração).
+OIDC_CALLBACK_PATH = "/api/v1/auth/oidc/callback"
 
 
 class SettingsError(Exception):
@@ -119,6 +121,49 @@ class Settings(BaseSettings):
 
     # TOTP obrigatório para contas locais (002, design § Decisões); desligável só em dev.
     mfa_obrigatorio: bool = True
+
+    # OIDC (004, design § Configuração). Sem OIDC_ISSUER, o OIDC fica desligado e as demais
+    # variáveis OIDC não são conferidas; com ela, `_oidc_problems` confere todas.
+    oidc_issuer: str | None = None
+    oidc_discovery_url: str | None = None
+    oidc_ca_file: FilePath | None = None
+    oidc_client_id: str | None = None
+    oidc_client_secret: SecretStr | None = None
+    oidc_redirect_uri: str | None = None
+    frontend_url: str | None = None
+    oidc_groups_claim: str = "groups"
+    oidc_required_acr: Annotated[tuple[str, ...], NoDecode] = ()
+
+    @field_validator(
+        "oidc_issuer",
+        "oidc_discovery_url",
+        "oidc_ca_file",
+        "oidc_client_id",
+        "oidc_client_secret",
+        "oidc_redirect_uri",
+        "frontend_url",
+        mode="before",
+    )
+    @classmethod
+    def _oidc_empty_is_unset(cls, value: object) -> object:
+        # `OIDC_ISSUER=` num arquivo de ambiente desliga o OIDC, em vez de virar texto vazio.
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("oidc_required_acr", mode="before")
+    @classmethod
+    def _split_acr(cls, value: object) -> object:
+        if isinstance(value, str):
+            return tuple(item.strip() for item in value.split(",") if item.strip())
+        return value
+
+    @property
+    def oidc_discovery_endpoint(self) -> str | None:
+        """OIDC_DISCOVERY_URL ou, sem ela, o documento de descoberta do próprio emissor."""
+        if self.oidc_issuer is None:
+            return None
+        return self.oidc_discovery_url or (
+            self.oidc_issuer.rstrip("/") + "/.well-known/openid-configuration"
+        )
 
     @property
     def chaves_de_cifra(self) -> dict[int, bytes]:
@@ -221,6 +266,7 @@ class Settings(BaseSettings):
             )
         problems.extend(self._report_signing_problems())
         problems.extend(self._crypto_problems())
+        problems.extend(self._oidc_problems())
         if not self.mfa_obrigatorio and self.app_env is not AppEnv.DEV:
             problems.append("MFA_OBRIGATORIO: só pode ser desligado em dev")
         if self.app_env is AppEnv.PROD:
@@ -270,6 +316,52 @@ class Settings(BaseSettings):
             if self.app_env is AppEnv.PROD and any(_is_example(key.kid) for key in keys):
                 problems.append(f"{name}: chave de exemplo não é aceita em prod")
         return problems
+
+    def _oidc_problems(self) -> list[str]:
+        """004/R3.2, R3.8 e R5.4 (design § Configuração). Só com o OIDC ligado (OIDC_ISSUER)."""
+        if self.oidc_issuer is None:
+            return []
+        required = {
+            "OIDC_CLIENT_ID": self.oidc_client_id,
+            "OIDC_CLIENT_SECRET": self.oidc_client_secret,
+            "OIDC_REDIRECT_URI": self.oidc_redirect_uri,
+            "FRONTEND_URL": self.frontend_url,
+        }
+        problems = [
+            f"{name}: obrigatória com OIDC_ISSUER" for name, v in required.items() if v is None
+        ]
+        urls = {
+            "OIDC_ISSUER": self.oidc_issuer,
+            "OIDC_DISCOVERY_URL": self.oidc_discovery_url,
+            "OIDC_REDIRECT_URI": self.oidc_redirect_uri,
+            "FRONTEND_URL": self.frontend_url,
+        }
+        for name, url in urls.items():
+            if url is not None and not _is_https_url(url):
+                problems.append(f"{name}: use um endereço https://")
+        redirect = self.oidc_redirect_uri
+        if redirect and _is_https_url(redirect) and urlsplit(redirect).path != OIDC_CALLBACK_PATH:
+            problems.append(f"OIDC_REDIRECT_URI: o caminho tem de ser {OIDC_CALLBACK_PATH}")
+        if self.frontend_url and _is_https_url(self.frontend_url):
+            problems.extend(self._frontend_problems(self.frontend_url))
+        secret = self.oidc_client_secret
+        if (
+            self.app_env is AppEnv.PROD
+            and secret is not None
+            and _is_example_secret(secret.get_secret_value())
+        ):
+            problems.append("OIDC_CLIENT_SECRET: segredo de exemplo não é aceito em prod")
+        return problems
+
+    def _frontend_problems(self, url: str) -> list[str]:
+        """Destino do retorno OIDC: fixo, sem query nem fragmento (sem redirecionamento aberto)."""
+        if not url.endswith("/") or "?" in url or "#" in url:
+            return ["FRONTEND_URL: termine em / e não use query nem fragmento"]
+        origin = f"https://{urlsplit(url).netloc}"
+        if origin not in self.cors_origins:
+            # O front renova a sessão dali, e o refresh confere a origem em CORS_ORIGINS.
+            return [f"FRONTEND_URL: a origem {origin} precisa estar em CORS_ORIGINS"]
+        return []
 
     def _production_problems(self) -> list[str]:
         problems: list[str] = []
@@ -393,9 +485,23 @@ def _is_origin(origin: str) -> bool:
     )
 
 
+def _is_https_url(url: str) -> bool:
+    try:
+        parts = urlsplit(url)
+        _ = parts.port  # porta inválida levanta ValueError
+    except ValueError:
+        return False
+    return parts.scheme == "https" and bool(parts.hostname) and parts.username is None
+
+
 def _uses_example_password(url: str) -> bool:
     password = unquote(urlsplit(url).password or "").lower()
     return password in EXAMPLE_PASSWORDS or _is_example(password)
+
+
+def _is_example_secret(secret: str) -> bool:
+    """A regra de `_uses_example_password` (001/R2.3) para um segredo solto (004/R5.4)."""
+    return secret.lower() in EXAMPLE_PASSWORDS or _is_example(secret)
 
 
 def _is_example(value: str) -> bool:

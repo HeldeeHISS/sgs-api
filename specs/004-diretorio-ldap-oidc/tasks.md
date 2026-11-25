@@ -182,7 +182,8 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
     - escrita recusada para a conta de serviço.
   - Concluída em 25/11/2026 (`make check` verde). Prova: `tests/e2e/test_lab_ldap.py::test_conta_de_servico_busca_por_ldaps_com_a_ca_de_laboratorio`, `::test_sem_porta_ldap_em_texto_claro` e `::test_conta_de_servico_nao_escreve_nem_le_senhas` (`-m slow`).
   - Nota de execução (Rafael, 25/11/2026): OpenLDAP 2.6.10 do Debian trixie, como uid 389. A carga inicial fica no volume `ldap-data`, para os `entryUUID` acompanharem o `db-data` entre as subidas. O *healthcheck* espera a 636, que só abre depois da carga. Sem o *overlay* `refint` (o design não o pede): apagar uma pessoa no roteiro deixa o DN dela no `member` do grupo. Fora da lista da frente, com autorização: `tests/architecture/test_proxy_confiavel.py` (serviço `ldap` e suíte nova).
-- [ ] T6. Configuração OIDC e validação do `id_token`
+- [x] T6. Configuração OIDC e validação do `id_token`
+  - Concluída em 25/11/2026 (`make check` verde). Prova: `tests/unit/identity/test_oidc_validacao.py`, `tests/unit/core/test_config.py::{test_oidc_fica_desligado_sem_oidc_issuer, test_oidc_completo_e_aceito_com_descoberta_padrao, test_oidc_usa_a_url_de_descoberta_configurada, test_oidc_incompleto_recusa_a_subida_e_nomeia_a_variavel, test_oidc_recusa_endereco_sem_https_ou_fora_do_formato, test_oidc_recusa_frontend_url_fora_de_cors_origins, test_prod_recusa_segredo_oidc_de_exemplo, test_prod_aceita_segredo_oidc_de_verdade, test_segredo_oidc_de_exemplo_vale_fora_de_prod}`
   - Frente: B
   - Faz:
     - campos `OIDC_*` e `FRONTEND_URL` em `Settings`: `https://`, caminho do callback, origem do front em `CORS_ORIGINS`, segredo de exemplo recusado em `prod`;
