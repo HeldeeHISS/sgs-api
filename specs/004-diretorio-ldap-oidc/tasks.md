@@ -99,7 +99,8 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
   - Bloqueada por: T2
   - Requisitos: R1.2, R1.13
   - Pronto quando: `tests/integration/identity/test_ldap_tls.py` passa
-- [ ] T12. Plano da sincronização (domínio puro)
+- [x] T12. Plano da sincronização (domínio puro)
+  - Concluída em 25/11/2026 (`make check` verde). Prova: `tests/unit/identity/test_plano_sincronizacao.py::test_um_conflito_nao_para_os_demais`
   - Frente: A
   - Faz: `planejar(retrato, locais)` cobre criar, atualizar, reativar e desativar contas; grupos e associações; conflitos de e-mail e de `username`.
   - Bloqueada por: —
