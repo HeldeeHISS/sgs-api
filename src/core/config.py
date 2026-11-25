@@ -56,6 +56,9 @@ URL_TLS_PARAMS = frozenset({"ssl", "sslmode", "sslrootcert", "sslcert", "sslkey"
 JWT_KID = re.compile(r"[A-Za-z0-9._-]{1,64}")
 # Retorno do provedor OIDC: só o callback da API (004/R3.8, design § Configuração).
 OIDC_CALLBACK_PATH = "/api/v1/auth/oidc/callback"
+# Nomes de atributo LDAP: entram nos filtros e na lista de atributos pedidos (004, design).
+LDAP_ATTRIBUTE = re.compile(r"[A-Za-z][A-Za-z0-9-]{0,63}")
+LDAP_PAGE_SIZE_MAX = 1000
 
 
 class SettingsError(Exception):
@@ -134,6 +137,40 @@ class Settings(BaseSettings):
     frontend_url: str | None = None
     oidc_groups_claim: str = "groups"
     oidc_required_acr: Annotated[tuple[str, ...], NoDecode] = ()
+
+    # LDAP (004, design § Configuração). Sem LDAP_URL, o LDAP fica desligado e as demais
+    # variáveis LDAP não são conferidas; com ela, `_ldap_problems` confere todas.
+    ldap_url: str | None = None
+    ldap_start_tls: bool = False
+    ldap_ca_file: str | None = None
+    ldap_bind_dn: str | None = None
+    ldap_bind_password: SecretStr | None = None
+    ldap_user_base: str | None = None
+    ldap_user_filter: str | None = None
+    ldap_group_base: str | None = None
+    ldap_group_filter: str | None = None
+    ldap_attr_login: str = "uid"
+    ldap_attr_email: str = "mail"
+    ldap_attr_name: str = "cn"
+    ldap_attr_id: str = "entryUUID"  # vazio: o DN é o identificador externo (R1.5)
+    ldap_attr_member: str = "member"
+    ldap_page_size: int = 500
+
+    @field_validator(
+        "ldap_url",
+        "ldap_ca_file",
+        "ldap_bind_dn",
+        "ldap_bind_password",
+        "ldap_user_base",
+        "ldap_user_filter",
+        "ldap_group_base",
+        "ldap_group_filter",
+        mode="before",
+    )
+    @classmethod
+    def _ldap_empty_is_unset(cls, value: object) -> object:
+        # `LDAP_URL=` num arquivo de ambiente desliga o LDAP, em vez de virar texto vazio.
+        return None if isinstance(value, str) and not value.strip() else value
 
     @field_validator(
         "oidc_issuer",
@@ -272,6 +309,7 @@ class Settings(BaseSettings):
         problems.extend(self._report_signing_problems())
         problems.extend(self._crypto_problems())
         problems.extend(self._oidc_problems())
+        problems.extend(self._ldap_problems())
         if not self.mfa_obrigatorio and self.app_env is not AppEnv.DEV:
             problems.append("MFA_OBRIGATORIO: só pode ser desligado em dev")
         if self.app_env is AppEnv.PROD:
@@ -370,6 +408,53 @@ class Settings(BaseSettings):
             and _is_example_secret(secret.get_secret_value())
         ):
             problems.append("OIDC_CLIENT_SECRET: segredo de exemplo não é aceito em prod")
+        return problems
+
+    def _ldap_problems(self) -> list[str]:
+        """004/R1.2 a R1.5 e R5.4 (design § Configuração). Só com o LDAP ligado (LDAP_URL)."""
+        if self.ldap_url is None:
+            return []
+        problems: list[str] = []
+        if not _is_ldap_tls_url(self.ldap_url, start_tls=self.ldap_start_tls):
+            problems.append(
+                "LDAP_URL: use ldaps://host[:porta], ou ldap://host[:porta] com LDAP_START_TLS=true"
+            )
+        required = {
+            "LDAP_CA_FILE": self.ldap_ca_file,
+            "LDAP_BIND_DN": self.ldap_bind_dn,
+            "LDAP_BIND_PASSWORD": self.ldap_bind_password,
+            "LDAP_USER_BASE": self.ldap_user_base,
+            "LDAP_USER_FILTER": self.ldap_user_filter,
+            "LDAP_GROUP_BASE": self.ldap_group_base,
+            "LDAP_GROUP_FILTER": self.ldap_group_filter,
+        }
+        problems.extend(
+            f"{name}: obrigatória com LDAP_URL" for name, v in required.items() if v is None
+        )
+        if self.ldap_ca_file is not None and not Path(self.ldap_ca_file).is_file():
+            problems.append("LDAP_CA_FILE: arquivo não encontrado")
+        attributes = {
+            "LDAP_ATTR_LOGIN": self.ldap_attr_login,
+            "LDAP_ATTR_EMAIL": self.ldap_attr_email,
+            "LDAP_ATTR_NAME": self.ldap_attr_name,
+            "LDAP_ATTR_MEMBER": self.ldap_attr_member,
+        }
+        if self.ldap_attr_id:  # vazio usa o DN (R1.5)
+            attributes["LDAP_ATTR_ID"] = self.ldap_attr_id
+        problems.extend(
+            f"{name}: nome de atributo inválido; use letras, dígitos e '-', começando por letra"
+            for name, value in attributes.items()
+            if not LDAP_ATTRIBUTE.fullmatch(value)
+        )
+        if not 1 <= self.ldap_page_size <= LDAP_PAGE_SIZE_MAX:
+            problems.append(f"LDAP_PAGE_SIZE: use de 1 a {LDAP_PAGE_SIZE_MAX}")
+        password = self.ldap_bind_password
+        if (
+            self.app_env is AppEnv.PROD
+            and password is not None
+            and _is_example_secret(password.get_secret_value())
+        ):
+            problems.append("LDAP_BIND_PASSWORD: senha de exemplo não é aceita em prod")
         return problems
 
     def _frontend_problems(self, url: str) -> list[str]:
@@ -535,6 +620,23 @@ def _browser_origin(url: str) -> str:
         host = f"[{host}]"
     port = "" if parts.port in (None, 443) else f":{parts.port}"
     return f"https://{host}{port}"
+
+
+def _is_ldap_tls_url(url: str, *, start_tls: bool) -> bool:
+    """`ldaps://host[:porta]`, ou `ldap://host[:porta]` só com StartTLS (004/R1.2)."""
+    try:
+        parts = urlsplit(url)
+        _ = parts.port  # porta inválida levanta ValueError
+    except ValueError:
+        return False
+    schemes = {"ldaps", "ldap"} if start_tls else {"ldaps"}
+    return (
+        parts.scheme in schemes
+        and bool(parts.hostname)
+        and parts.username is None
+        and parts.path in {"", "/"}
+        and not (parts.query or parts.fragment)
+    )
 
 
 def _uses_example_password(url: str) -> bool:

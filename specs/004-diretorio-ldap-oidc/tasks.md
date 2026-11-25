@@ -80,7 +80,8 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
   - Bloqueada por: T0
   - Requisitos: R1.9, R1.11, R1.14, R3.7
   - Pronto quando: `tests/integration/identity/test_directory_tables.py` passa
-- [ ] T2. Configuração LDAP e adaptador `ldap3`
+- [x] T2. Configuração LDAP e adaptador `ldap3`
+  - Concluída em 25/11/2026 (`make check` verde). Prova: `tests/unit/identity/test_ldap3_adapter.py::test_snapshot_pagina_e_pede_so_os_atributos_configurados`
   - Frente: A
   - Faz:
     - campos `LDAP_*` em `Settings`, com as regras de esquema, CA e obrigatórias (`_ldap_problems`) e a recusa da senha de exemplo em `prod`;

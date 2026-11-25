@@ -612,3 +612,151 @@ def test_oidc_aceita_retorno_na_mesma_origem_escrita_de_outro_jeito(
     )
 
     assert load_settings().oidc_redirect_uri == retorno
+
+
+# LDAP (spec 004, design § Configuração): com LDAP_URL, as demais variáveis passam a valer.
+VARIAVEIS_LDAP = {
+    "LDAP_URL": "ldaps://ldap:636",
+    "LDAP_BIND_DN": "cn=sgs-sync,ou=servicos,dc=recife,dc=pe,dc=gov,dc=br",
+    "LDAP_BIND_PASSWORD": "sgs-lab-exemplo-bind",
+    "LDAP_USER_BASE": "ou=pessoas,dc=recife,dc=pe,dc=gov,dc=br",
+    "LDAP_USER_FILTER": "(objectClass=inetOrgPerson)",
+    "LDAP_GROUP_BASE": "ou=grupos,dc=recife,dc=pe,dc=gov,dc=br",
+    "LDAP_GROUP_FILTER": "(objectClass=groupOfNames)",
+}
+
+
+@pytest.fixture
+def ldap(tmp_path: Path) -> dict[str, str]:
+    """Variáveis LDAP do laboratório, com uma CA que existe."""
+    ca = tmp_path / "ca.crt"
+    ca.write_text("-----BEGIN CERTIFICATE-----\n", encoding="utf-8")
+    return {**VARIAVEIS_LDAP, "LDAP_CA_FILE": str(ca)}
+
+
+def test_ldap_fica_desligado_sem_ldap_url(ambiente: DefinirAmbiente) -> None:
+    """004/R1.2 (design § Configuração: sem LDAP_URL, o LDAP fica desligado e as demais variáveis
+    LDAP não são conferidas)"""
+    ambiente({**VARIAVEIS_DEV, "LDAP_URL": "", "LDAP_CA_FILE": "", "LDAP_ATTR_LOGIN": "x)("})
+
+    assert load_settings().ldap_url is None
+
+
+def test_ldap_completo_e_aceito_com_os_atributos_padrao(
+    ambiente: DefinirAmbiente, ldap: dict[str, str]
+) -> None:
+    """004/R1.2, R1.3, R1.4"""
+    ambiente({**VARIAVEIS_DEV, **ldap})
+
+    settings = load_settings()
+
+    assert settings.ldap_url == "ldaps://ldap:636"
+    assert settings.ldap_start_tls is False
+    assert settings.ldap_bind_password is not None
+    assert (settings.ldap_attr_login, settings.ldap_attr_email) == ("uid", "mail")
+    assert (settings.ldap_attr_name, settings.ldap_attr_id) == ("cn", "entryUUID")
+    assert settings.ldap_attr_member == "member"
+    assert settings.ldap_page_size == 500
+
+
+def test_ldap_aceita_ldap_com_starttls(ambiente: DefinirAmbiente, ldap: dict[str, str]) -> None:
+    """004/R1.2"""
+    ambiente({**VARIAVEIS_DEV, **ldap, "LDAP_URL": "ldap://ldap:389", "LDAP_START_TLS": "true"})
+
+    assert load_settings().ldap_start_tls is True
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["ldap://ldap:389", "ldapi:///var/run/slapd", "https://ldap", "ldaps://", "ldaps://ldap:x"],
+)
+def test_ldap_recusa_conexao_sem_tls(
+    ambiente: DefinirAmbiente, ldap: dict[str, str], url: str
+) -> None:
+    """004/R1.2 (só LDAPS, ou ldap:// com StartTLS)"""
+    ambiente({**VARIAVEIS_DEV, **ldap, "LDAP_URL": url})
+
+    with pytest.raises(SettingsError, match="LDAP_URL: use ldaps://"):
+        load_settings()
+
+
+@pytest.mark.parametrize(
+    "variavel",
+    [
+        "LDAP_CA_FILE",
+        "LDAP_BIND_DN",
+        "LDAP_BIND_PASSWORD",
+        "LDAP_USER_BASE",
+        "LDAP_USER_FILTER",
+        "LDAP_GROUP_BASE",
+        "LDAP_GROUP_FILTER",
+    ],
+)
+def test_ldap_incompleto_recusa_a_subida_e_nomeia_a_variavel(
+    ambiente: DefinirAmbiente, ldap: dict[str, str], variavel: str
+) -> None:
+    """004/R1.2, R1.3, R1.4 (CA, conta de serviço, bases e filtros obrigatórios com LDAP_URL)"""
+    ambiente({**VARIAVEIS_DEV, **ldap, variavel: ""})
+
+    with pytest.raises(SettingsError, match=f"{variavel}: obrigatória com LDAP_URL"):
+        load_settings()
+
+
+@pytest.mark.parametrize(
+    ("variavel", "valor"),
+    [
+        ("LDAP_CA_FILE", "/nao/existe/ca.crt"),
+        ("LDAP_ATTR_LOGIN", "uid)(cn=*"),
+        ("LDAP_ATTR_EMAIL", "1mail"),
+        ("LDAP_ATTR_MEMBER", ""),
+        ("LDAP_PAGE_SIZE", "0"),
+        ("LDAP_PAGE_SIZE", "1001"),
+    ],
+)
+def test_ldap_recusa_valor_fora_do_formato(
+    ambiente: DefinirAmbiente, ldap: dict[str, str], variavel: str, valor: str
+) -> None:
+    """004/R1.2, R1.4 (CA existente, nomes de atributo e página de 1 a 1000)"""
+    ambiente({**VARIAVEIS_DEV, **ldap, variavel: valor})
+
+    with pytest.raises(SettingsError, match=variavel):
+        load_settings()
+
+
+def test_ldap_attr_id_vazio_usa_o_dn(ambiente: DefinirAmbiente, ldap: dict[str, str]) -> None:
+    """004/R1.5 (LDAP_ATTR_ID vazio usa o DN como identificador externo)"""
+    ambiente({**VARIAVEIS_DEV, **ldap, "LDAP_ATTR_ID": ""})
+
+    assert load_settings().ldap_attr_id == ""
+
+
+@pytest.mark.parametrize("senha", ["sgs-lab-exemplo-bind", "changeme", "admin"])
+def test_prod_recusa_senha_ldap_de_exemplo(
+    ambiente: DefinirAmbiente, ldap: dict[str, str], senha: str
+) -> None:
+    """004/R5.4 (a mesma regra das senhas de exemplo da 001/R2.3)"""
+    ambiente({**VARIAVEIS_PROD, **ldap, "LDAP_BIND_PASSWORD": senha})
+
+    with pytest.raises(SettingsError, match="LDAP_BIND_PASSWORD: senha de exemplo") as erro:
+        load_settings()
+
+    assert senha not in str(erro.value)
+
+
+def test_prod_aceita_senha_ldap_de_verdade(ambiente: DefinirAmbiente, ldap: dict[str, str]) -> None:
+    """004/R5.4"""
+    ambiente({**VARIAVEIS_PROD, **ldap, "LDAP_BIND_PASSWORD": "Qm7-senha-real-9x"})
+
+    assert load_settings().ldap_bind_password is not None
+
+
+def test_senha_ldap_de_exemplo_vale_fora_de_prod(
+    ambiente: DefinirAmbiente, ldap: dict[str, str]
+) -> None:
+    """004/R5.4 (o laboratório usa a senha de exemplo; a recusa vale só em prod)"""
+    ambiente({**VARIAVEIS_DEV, **ldap})
+
+    senha = load_settings().ldap_bind_password
+
+    assert senha is not None
+    assert senha.get_secret_value() == "sgs-lab-exemplo-bind"
