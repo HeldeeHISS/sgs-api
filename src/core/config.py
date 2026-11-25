@@ -410,6 +410,11 @@ class Settings(BaseSettings):
             problems.append("OIDC_CLIENT_SECRET: segredo de exemplo não é aceito em prod")
         return problems
 
+    def problemas_do_ldap(self) -> list[str]:
+        """As regras LDAP da subida, para conferir valores trocados depois (`sgs-admin diretorio
+        testar --url --ca`)."""
+        return self._ldap_problems()
+
     def _ldap_problems(self) -> list[str]:
         """004/R1.2 a R1.5 e R5.4 (design § Configuração). Só com o LDAP ligado (LDAP_URL)."""
         if self.ldap_url is None:

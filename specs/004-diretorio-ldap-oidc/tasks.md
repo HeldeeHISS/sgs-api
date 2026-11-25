@@ -90,7 +90,8 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
   - Bloqueada por: T0
   - Requisitos: R1.2, R1.3, R1.4, R2.1, R2.2, R2.4, R5.4
   - Pronto quando: `tests/unit/identity/test_ldap3_adapter.py` e os testes LDAP de `tests/unit/core/test_config.py` passam
-- [ ] T11. Conferência do TLS do LDAP e `sgs-admin diretorio testar`
+- [x] T11. Conferência do TLS do LDAP e `sgs-admin diretorio testar`
+  - Concluída em 25/11/2026 (`make check` verde). Prova: `tests/integration/identity/test_ldap_tls.py::test_tls_do_ldap_e_conferido_antes_de_qualquer_credencial`
   - Frente: A
   - Faz:
     - servidor TLS local em *thread* no teste;

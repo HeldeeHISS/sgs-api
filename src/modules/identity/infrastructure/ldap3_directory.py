@@ -11,17 +11,25 @@ Erros do `ldap3` viram `DirectoryUnavailable` com mensagem genérica e sem a exc
 encadeada: nenhuma senha vai para exceção ou log.
 """
 
+import contextlib
 import functools
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from ssl import CERT_REQUIRED
-from typing import Any, Self
+from typing import Any, Literal, Self
 from urllib.parse import urlsplit
 
 import anyio.to_thread
-from ldap3 import SUBTREE, SYNC, Connection, Server, Tls
-from ldap3.core.exceptions import LDAPBindError, LDAPException, LDAPInvalidCredentialsResult
+from ldap3 import NONE, SUBTREE, SYNC, Connection, Server, Tls
+from ldap3.core.exceptions import (
+    LDAPBindError,
+    LDAPCertificateError,
+    LDAPException,
+    LDAPInvalidCredentialsResult,
+    LDAPSSLConfigurationError,
+    LDAPStartTLSError,
+)
 from ldap3.utils.conv import escape_filter_chars
 from pydantic import SecretStr
 
@@ -36,6 +44,8 @@ from src.modules.identity.domain.diretorio import (
 CONNECT_TIMEOUT_SECONDS = 5
 RECEIVE_TIMEOUT_SECONDS = 10
 _UNAVAILABLE = "Serviço de diretório indisponível"
+# Resultado de `testar`: "ok" ou um motivo genérico (design § Roteiro e ferramenta).
+MotivoDoTeste = Literal["ok", "certificado", "conexao", "credencial"]
 
 
 @dataclass(frozen=True)
@@ -116,6 +126,20 @@ class Ldap3Directory:
     async def groups_of(self, user: DirectoryUser) -> tuple[DirectoryGroup, ...]:
         return await self._run(functools.partial(self._groups_of, user.dn))
 
+    async def testar(self) -> MotivoDoTeste:
+        """Conexão, TLS e bind da conta de serviço, sem busca nem escrita (`sgs-admin diretorio
+        testar`). Devolve "ok" ou o motivo genérico, nunca a mensagem do `ldap3`."""
+        return await anyio.to_thread.run_sync(self._testar)
+
+    def _testar(self) -> MotivoDoTeste:
+        try:
+            self._service_connection().unbind()
+        except (LDAPBindError, LDAPInvalidCredentialsResult):
+            return "credencial"
+        except LDAPException as erro:
+            return "certificado" if _is_certificate_error(erro) else "conexao"
+        return "ok"
+
     async def _run[T](self, call: Callable[[], T]) -> T:
         try:
             return await anyio.to_thread.run_sync(call)
@@ -178,12 +202,15 @@ class Ldap3Directory:
         )
         try:
             conn.open()
-            if self._config.start_tls:
-                conn.start_tls()
+            # A recusa do TLS levanta; o False, se vier, também barra o bind.
+            if self._config.start_tls and not conn.start_tls():
+                raise LDAPStartTLSError("StartTLS recusado")
             if not conn.bind():  # com raise_exceptions, a recusa já levanta
                 raise LDAPBindError(_UNAVAILABLE)
         except BaseException:
-            conn.unbind()
+            # O unbind num socket já quebrado (TLS recusado) levantaria outro erro por cima.
+            with contextlib.suppress(LDAPException, OSError):
+                conn.unbind()
             raise
         return conn
 
@@ -261,7 +288,19 @@ def _build_server(config: LdapConfig) -> Server:
         use_ssl=ldaps,
         tls=tls,
         connect_timeout=CONNECT_TIMEOUT_SECONDS,
+        # Sem NONE, o `ldap3` lê o root DSE ao abrir a conexão: com StartTLS, essa busca sairia
+        # em claro, antes do TLS (004/T11, `test_ldap_tls.py`). Sem esquema, binários viram hex.
+        get_info=NONE,
     )
+
+
+def _is_certificate_error(error: LDAPException) -> bool:
+    """TLS recusado (CA, nome, StartTLS). O `ldap3` agrega as tentativas de conexão numa
+    `LDAPSocketOpenError` cujo texto cita o erro do `ssl`; o texto só é lido, nunca mostrado."""
+    if isinstance(error, LDAPCertificateError | LDAPStartTLSError | LDAPSSLConfigurationError):
+        return True
+    text = str(error).lower()
+    return any(marker in text for marker in ("ssl", "certificate", "tls"))
 
 
 def _all(value: object) -> Iterable[str]:
