@@ -117,7 +117,8 @@ Pontos de encontro desta spec:
   - Bloqueada por: T0
   - Requisitos: R2.2, R2.7, R2.9
   - Pronto quando: os testes S3 de `tests/unit/core/test_config.py` passam
-- [ ] T9. Assinatura dos relatórios e chaves públicas
+- [x] T9. Assinatura dos relatórios e chaves públicas
+  - Concluída em 25/11/2026 (`make check` verde). Prova: `tests/unit/reports/test_assinatura.py`, `tests/integration/reports/test_chaves_publicas.py`
   - Frente: B
   - Faz:
     - `REPORT_SIGNING_KEYS(_FILE)` em `Settings`: o leitor das chaves JWT, chaves iguais às JWT recusadas, chave de exemplo recusada em `prod`;

@@ -48,6 +48,8 @@ from src.modules.registry.infrastructure.repository import (
     SqlRepositorioDeUnidades,
     SqlRepositorioDeVinculos,
 )
+from src.modules.reports.api import jwks as relatorios_jwks
+from src.modules.reports.infrastructure.assinatura import Es256AssinadorDeRelatorio
 
 
 @asynccontextmanager
@@ -82,6 +84,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.engine = create_engine(settings.database_url.get_secret_value(), settings)
     app.state.sessoes = async_sessionmaker(app.state.engine, expire_on_commit=False)
     app.state.token_service = JwtTokenService.from_settings(settings)
+    # Assinatura dos relatórios (005/R5): None sem REPORT_SIGNING_KEYS, e então nada é assinado.
+    app.state.assinador_de_relatorio = Es256AssinadorDeRelatorio.from_settings(settings)
     # Fábricas de repositórios: recebem a sessão SQLAlchemy de quem as usa (a camada api não
     # importa a infrastructure; design da 002, Decisões).
     app.state.repositorio_de_usuarios = SqlUserRepository
@@ -114,6 +118,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     install_error_handlers(app)
     app.include_router(health.router)
     app.include_router(jwks.router)
+    app.include_router(relatorios_jwks.router)
     app.include_router(auth.router)
     app.include_router(acesso.router)
     app.include_router(unidades.router)

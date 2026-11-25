@@ -12,7 +12,11 @@ from urllib.parse import parse_qsl, unquote, urlsplit
 
 from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.serialization import load_pem_private_key
+from cryptography.hazmat.primitives.serialization import (
+    Encoding,
+    PublicFormat,
+    load_pem_private_key,
+)
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -100,6 +104,13 @@ class Settings(BaseSettings):
     jwt_private_keys: Annotated[tuple[JwtSigningKey, ...], NoDecode] = ()
     jwt_private_keys_file: Annotated[tuple[JwtSigningKey, ...], NoDecode] = ()
 
+    # Chaves de assinatura dos relatórios (005, design § Assinatura): mesmo formato e mesmo leitor
+    # das chaves JWT, mas chaves próprias (R5.2), em REPORT_SIGNING_KEYS ou num arquivo montado
+    # (REPORT_SIGNING_KEYS_FILE); a primeira assina e todas são publicadas. Use
+    # `chaves_de_relatorio`.
+    report_signing_keys: Annotated[tuple[JwtSigningKey, ...], NoDecode] = ()
+    report_signing_keys_file: Annotated[tuple[JwtSigningKey, ...], NoDecode] = ()
+
     # Chaves do `FieldCipher` (spec 002, T5): objeto JSON {"<versão>": "<32 bytes em base64>"}
     # em CRYPTO_KEYS ou num arquivo montado (CRYPTO_KEYS_FILE); CRYPTO_ACTIVE_KEY diz qual cifra.
     crypto_keys: Annotated[Mapping[int, SecretBytes], NoDecode] = Field(default_factory=dict)
@@ -136,6 +147,11 @@ class Settings(BaseSettings):
         """Chaves JWT na ordem configurada, da variável ou do arquivo; a primeira assina."""
         return self.jwt_private_keys or self.jwt_private_keys_file
 
+    @property
+    def chaves_de_relatorio(self) -> tuple[JwtSigningKey, ...]:
+        """Chaves de assinatura dos relatórios, da variável ou do arquivo; a primeira assina."""
+        return self.report_signing_keys or self.report_signing_keys_file
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
@@ -155,12 +171,12 @@ class Settings(BaseSettings):
                 )
         return origins
 
-    @field_validator("jwt_private_keys", mode="before")
+    @field_validator("jwt_private_keys", "report_signing_keys", mode="before")
     @classmethod
     def _parse_jwt_keys(cls, value: object) -> object:
         return _parse_jwt_keys(value) if isinstance(value, str) else value
 
-    @field_validator("jwt_private_keys_file", mode="before")
+    @field_validator("jwt_private_keys_file", "report_signing_keys_file", mode="before")
     @classmethod
     def _read_jwt_keys_file(cls, value: object) -> object:
         if not isinstance(value, str | Path):
@@ -203,6 +219,7 @@ class Settings(BaseSettings):
             problems.append(
                 "JWT_PRIVATE_KEYS_FILE: defina as chaves JWT só nela ou só em JWT_PRIVATE_KEYS"
             )
+        problems.extend(self._report_signing_problems())
         problems.extend(self._crypto_problems())
         if not self.mfa_obrigatorio and self.app_env is not AppEnv.DEV:
             problems.append("MFA_OBRIGATORIO: só pode ser desligado em dev")
@@ -227,6 +244,32 @@ class Settings(BaseSettings):
         if self.crypto_active_key not in self.chaves_de_cifra:
             return ["CRYPTO_ACTIVE_KEY: não há chave com essa versão em CRYPTO_KEYS"]
         return []
+
+    def _report_signing_problems(self) -> list[str]:
+        """REPORT_SIGNING_KEYS(_FILE): uma fonte só, chaves que não são as JWT (005/R5.2) e, em
+        prod, nenhuma chave de exemplo (design da 005, § Configuração)."""
+        sources = {
+            "REPORT_SIGNING_KEYS": self.report_signing_keys,
+            "REPORT_SIGNING_KEYS_FILE": self.report_signing_keys_file,
+        }
+        if all(sources.values()):
+            return [
+                "REPORT_SIGNING_KEYS_FILE: defina as chaves de relatório só nela "
+                "ou só em REPORT_SIGNING_KEYS"
+            ]
+        jwt_kids = {key.kid for key in self.jwt_signing_keys}
+        jwt_points = {_public_point(key) for key in self.jwt_signing_keys}
+        problems: list[str] = []
+        for name, keys in sources.items():
+            problems.extend(
+                f"{name}: a chave {key.kid} repete o kid ou a chave pública de uma chave JWT; "
+                "use chaves só para os relatórios"
+                for key in keys
+                if key.kid in jwt_kids or _public_point(key) in jwt_points
+            )
+            if self.app_env is AppEnv.PROD and any(_is_example(key.kid) for key in keys):
+                problems.append(f"{name}: chave de exemplo não é aceita em prod")
+        return problems
 
     def _production_problems(self) -> list[str]:
         problems: list[str] = []
@@ -328,6 +371,12 @@ def _parse_jwt_keys(raw: str) -> tuple[JwtSigningKey, ...]:
 
 def _jwt_keys_error(detail: str) -> PydanticCustomError:
     return PydanticCustomError("chaves_jwt_invalidas", "{detalhe}", {"detalhe": detail})
+
+
+def _public_point(key: JwtSigningKey) -> bytes:
+    """Chave pública como ponto não comprimido: compara chaves sem expor a privada."""
+    public = key.private_key().public_key()
+    return public.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
 
 
 def _is_origin(origin: str) -> bool:

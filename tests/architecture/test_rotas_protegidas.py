@@ -23,6 +23,10 @@ PUBLICAS = {
     "/api/v1/auth/mfa/verify",
     "/api/v1/auth/refresh",
     "/api/v1/auth/logout",
+    # Fora de /api/v1, como o JWKS da 002, mas listada para registrar a justificativa: só publica
+    # chaves públicas, para quem recebe um relatório conferir a assinatura sem conta na
+    # plataforma (design da 005, § Rotas e § Segurança; R5.4).
+    "/.well-known/relatorios-jwks.json",
 }
 
 
