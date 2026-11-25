@@ -70,7 +70,8 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
     - `ServiceUnavailable(AppError)` com status 503 em `src/core/errors.py`.
   - Requisitos: — (infraestrutura das tarefas seguintes)
   - Pronto quando: `uv.lock` travado, `tests/unit/core/test_errors.py::test_service_unavailable_responde_503` passa e o `make check` está verde
-- [ ] T1. Migração `0004_diretorio` e repositórios do diretório
+- [x] T1. Migração `0004_diretorio` e repositórios do diretório
+  - Concluída em 25/11/2026 (`make check` verde). Prova: `tests/integration/identity/test_directory_tables.py::test_uma_execucao_em_andamento_por_vez`, `::test_state_do_oidc_e_consumido_uma_vez`, `::test_mapeamento_exige_grupo_existente` e `::test_migracao_para_se_houver_mapeamento_orfao` (arquivo inteiro passa)
   - Frente: A
   - Faz:
     - `groups`, `user_groups`, `directory_sync_runs` com o índice único parcial e `oidc_login_requests` (design § Modelo de dados);

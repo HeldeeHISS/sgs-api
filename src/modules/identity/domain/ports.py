@@ -7,7 +7,16 @@ from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
+from src.modules.identity.domain.espelho_diretorio import (
+    OrigemDeGrupo,
+    StatusDaExecucao,
+    SyncConflict,
+    SyncCounts,
+    SyncRun,
+    UpsertedGroup,
+)
 from src.modules.identity.domain.login import EstadoDeLogin
+from src.modules.identity.domain.oidc import OidcLoginRequest
 from src.modules.identity.domain.sessions import AuthSession, RefreshToken
 from src.modules.identity.domain.users import User
 
@@ -81,3 +90,60 @@ class RefreshTokenWriter(Protocol):
     async def marcar_usado(self, token_id: UUID, agora: datetime) -> bool:
         """Marca o refresh como usado, só se ainda não estava; `False` se outro já usou."""
         ...
+
+
+class DirectoryRepository(Protocol):
+    """Grupos espelhados, associações e execuções da sincronização (spec 004, design § Modelo)."""
+
+    async def upsert_group(
+        self, source: OrigemDeGrupo, external_id: str, name: str, agora: datetime
+    ) -> UpsertedGroup:
+        """Cria ou atualiza por (`source`, `external_id`) e reativa (R1.8, R3.3)."""
+        ...
+
+    async def deactivate_groups_except(
+        self, source: OrigemDeGrupo, external_ids: set[str], agora: datetime
+    ) -> int:
+        """Desativa, sem apagar, os grupos ativos da origem fora da lista; devolve quantos."""
+        ...
+
+    async def replace_user_groups(
+        self, user_id: UUID, source: OrigemDeGrupo, group_ids: set[UUID]
+    ) -> None:
+        """Troca as associações da origem do usuário pelas dadas (R1.8, R2.3, R3.3)."""
+        ...
+
+    async def groups_of_user(self, user_id: UUID, source: OrigemDeGrupo) -> frozenset[UUID]: ...
+
+    async def active_member_counts(self, group_ids: set[UUID]) -> dict[UUID, int]:
+        """Membros com conta ativa por grupo (R1.14)."""
+        ...
+
+    async def start_run(self, run_id: UUID, *, triggered_by: UUID | None, agora: datetime) -> bool:
+        """Grava a execução `em_andamento`; `False` se já houver uma (R1.11)."""
+        ...
+
+    async def finish_run(
+        self,
+        run_id: UUID,
+        status: StatusDaExecucao,
+        agora: datetime,
+        *,
+        counts: SyncCounts | None = None,
+        conflicts: tuple[SyncConflict, ...] = (),
+        error: str | None = None,
+    ) -> None:
+        """Fecha a execução com as contagens, os conflitos e o erro genérico (R1.9, R1.10)."""
+        ...
+
+    async def get_run(self, run_id: UUID) -> SyncRun | None: ...
+
+
+class OidcLoginRequestRepository(Protocol):
+    async def add(self, request: OidcLoginRequest) -> None: ...
+
+    async def consume(self, state_hash: str, agora: datetime) -> OidcLoginRequest | None:
+        """Marca como usado, num passo só, se ainda não usado nem vencido (R3.7)."""
+        ...
+
+    async def delete_expired_before(self, limite: datetime) -> int: ...

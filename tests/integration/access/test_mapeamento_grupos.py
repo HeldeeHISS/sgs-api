@@ -1,9 +1,9 @@
 """Mapeamentos grupo→papel e recálculo das atribuições derivadas (003/T8).
 
 Design da 003 § Rotas (`GET/POST/DELETE /api/v1/admin/mapeamentos-grupo`, `papel:assign`). Os
-grupos e os membros vêm do diretório (spec 004, ainda sem `groups` e `user_groups`): o teste
-troca a porta `MembrosDeGrupo` por um diretório em memória, e a entrada e a saída de um grupo
-(R3.2) chamam o recálculo como a sincronização da 004 fará.
+grupos e os membros vêm do diretório (spec 004). O grupo existe em `groups` (FK da
+0004_diretorio), mas o teste troca a porta `MembrosDeGrupo` por um diretório em memória, e a
+entrada e a saída de um grupo (R3.2) chamam o recálculo como a sincronização da 004 fará.
 """
 
 from collections.abc import AsyncIterator
@@ -28,7 +28,7 @@ from src.modules.access.infrastructure.repository import (
 from src.modules.audit.application.registrar import Ator
 from src.modules.audit.infrastructure.repository import SqlAuditStore
 from tests.factories import make_settings
-from tests.integration.acesso import GLOBAL, Sessoes, bearer, eventos, logado
+from tests.integration.acesso import GLOBAL, Sessoes, bearer, eventos, grupo_espelhado, logado
 from tests.integration.postgres import BancoDeTeste
 from tests.integration.registry import cadastro
 
@@ -90,6 +90,11 @@ async def _inserir_unidade(sessoes: Sessoes) -> UUID:
         return await cadastro.inserir_unidade(conexao, f"USF {uuid7().hex}")
 
 
+async def _grupo(sessoes: Sessoes) -> UUID:
+    async with sessoes() as sessao, sessao.begin():
+        return await grupo_espelhado(sessao)
+
+
 def _corpo(grupo: UUID, papel: str, tipo: str, id_: str | None) -> dict[str, Any]:
     return {"grupo_id": str(grupo), "papel": papel, "escopo_tipo": tipo, "escopo_id": id_}
 
@@ -119,7 +124,7 @@ async def test_criar_mapeamento_atribui_o_papel_aos_membros_ativos_do_grupo(
     membro_b = await logado(sessoes)
     de_fora = await logado(sessoes)
     unidade = await _inserir_unidade(sessoes)
-    grupo = uuid7()
+    grupo = await _grupo(sessoes)
     diretorio.grupos[grupo] = frozenset({membro_a.user_id, membro_b.user_id})
     versao_antes = await _versao(sessoes, membro_a.user_id)
 
@@ -177,7 +182,7 @@ async def test_membro_do_grupo_mapeado_ve_o_papel_no_me_na_proxima_requisicao(
     """003/R3.1 e R4.5: a atribuição derivada vale já na próxima requisição do membro."""
     admin = await logado(sessoes, ("ADMIN_TI", GLOBAL))
     membro = await logado(sessoes)
-    grupo = uuid7()
+    grupo = await _grupo(sessoes)
     diretorio.grupos[grupo] = frozenset({membro.user_id})
     antes = await cliente.get("/api/v1/me", headers=bearer(app, membro))
     assert antes.json()["papeis"] == []
@@ -199,7 +204,7 @@ async def test_remover_mapeamento_remove_as_derivadas_e_mantem_as_diretas(
     `papel.removido`), e a atribuição direta do mesmo papel fica."""
     admin = await logado(sessoes, ("ADMIN_TI", GLOBAL))
     membro = await logado(sessoes, ("AUDITOR", GLOBAL))
-    grupo = uuid7()
+    grupo = await _grupo(sessoes)
     diretorio.grupos[grupo] = frozenset({membro.user_id})
     criado = await cliente.post(
         ROTA, json=_corpo(grupo, "AUDITOR", "global", None), headers=bearer(app, admin)
@@ -233,7 +238,7 @@ async def test_entrar_e_sair_do_grupo_adiciona_e_remove_a_derivada_sem_tocar_nas
     entrou, remove a dos que deixou e não altera as diretas."""
     admin = await logado(sessoes, ("ADMIN_TI", GLOBAL))
     usuario = await logado(sessoes, ("DIRETORIA", GLOBAL))
-    grupo, outro_grupo = uuid7(), uuid7()
+    grupo, outro_grupo = await _grupo(sessoes), await _grupo(sessoes)
     criado = await cliente.post(
         ROTA, json=_corpo(grupo, "AUDITOR", "global", None), headers=bearer(app, admin)
     )
@@ -269,7 +274,7 @@ async def test_listar_mapeamentos(
 ) -> None:
     """003/R3: a listagem mostra os mapeamentos criados."""
     admin = await logado(sessoes, ("ADMIN_TI", GLOBAL))
-    grupo = uuid7()
+    grupo = await _grupo(sessoes)
     criado = await cliente.post(
         ROTA, json=_corpo(grupo, "AUDITOR", "global", None), headers=bearer(app, admin)
     )
@@ -285,7 +290,7 @@ async def test_mapeamento_repetido_responde_409(
 ) -> None:
     """003/R3.1: o mesmo grupo, papel e escopo não são mapeados duas vezes."""
     admin = bearer(app, await logado(sessoes, ("ADMIN_TI", GLOBAL)))
-    corpo = _corpo(uuid7(), "AUDITOR", "global", None)
+    corpo = _corpo(await _grupo(sessoes), "AUDITOR", "global", None)
     assert (await cliente.post(ROTA, json=corpo, headers=admin)).status_code == 201
 
     resposta = await cliente.post(ROTA, json=corpo, headers=admin)
@@ -326,7 +331,7 @@ async def test_admin_membro_do_grupo_nao_cria_o_mapeamento(
 ) -> None:
     """003/R3.1 com R2.5: mapear um grupo de que se é membro atribuiria papel a si mesmo."""
     admin = await logado(sessoes, ("ADMIN_TI", GLOBAL))
-    grupo = uuid7()
+    grupo = await _grupo(sessoes)
     diretorio.grupos[grupo] = frozenset({admin.user_id})
 
     resposta = await cliente.post(

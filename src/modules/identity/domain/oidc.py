@@ -6,7 +6,26 @@ autorização, troca o código e confere o `id_token` antes de devolver um `Oidc
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal, Protocol
+from uuid import UUID
+
+NONCE_MAX = 64
+
+
+@dataclass(frozen=True)
+class OidcLoginRequest:
+    """Início de um login OIDC guardado no banco (D004-2). `state` e vínculo só em SHA-256; o
+    `code_verifier` cifrado com `FieldCipher`, AAD = `id`."""
+
+    id: UUID
+    state_hash: str
+    binding_hash: str
+    nonce: str
+    code_verifier_enc: str
+    created_at: datetime
+    expires_at: datetime
+
 
 # Motivos de recusa da troca (design § Fluxo, Login OIDC, passo 3). Vão para a auditoria
 # (`auth.oidc_failed`): lista fechada, sem o código, o token, o segredo nem o e-mail.
