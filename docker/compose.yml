@@ -1,6 +1,7 @@
 # Ambiente local (spec 001, R1.1): API, PostgreSQL e proxy TLS.
 # A API conecta ao banco por TLS com verificação do certificado e do nome (spec 011, R10.3).
-# LDAP, Keycloak e S3 local entram nas specs 004 e 005.
+# Laboratório da spec 004 (design § Ambiente): Keycloak em keycloak.localhost, pelo proxy; LDAP e
+# S3 local entram na 004/T13 e na 005/T8. A API não depende deles para ficar saudável.
 # Subir: docker compose -f docker/compose.yml up -d --build --wait (ver README).
 # As senhas abaixo são de desenvolvimento; a API recusa iniciar com elas em prod (001/R2.3).
 #
@@ -9,6 +10,12 @@
 # a subnet inteira nem o gateway da bridge são confiáveis. SGS_BORDA_SUBNET e SGS_BORDA_PROXY_IP
 # são obrigatórias (o compose não sobe sem elas) e cada stack no mesmo host usa uma subnet
 # própria; valores de desenvolvimento em docker/.env (ver .env.example e README).
+# Spec 004 (D004-13): `integracoes` (interna) liga a API aos serviços de laboratório; `exposicao`
+# liga o proxy a eles. Proxy e API continuam só com a `borda` em comum (013/R3.1).
+#
+# Endereços públicos (spec 004): SGS_PUBLIC_URL (padrão https://localhost) e
+# SGS_PUBLIC_KEYCLOAK_URL (padrão https://keycloak.localhost) alimentam ao mesmo tempo o Keycloak
+# e a API. Com SGS_HTTPS_PORT diferente de 443, as duas levam a porta (README).
 name: sgs-api
 
 services:
@@ -21,6 +28,17 @@ services:
     volumes:
       - db-certs:/certs
       - ./postgres/gerar-certificados.sh:/gerar-certificados.sh:ro
+
+  # TLS dos serviços de laboratório (spec 004, design § Certificados; compartilhado com a 005): na
+  # subida, gera no volume servicos-certs, se faltarem, a CA de laboratório e os certificados de
+  # ldap, keycloak e s3. Separado do db-certs (D004-8). Detalhes no script.
+  servicos-certs:
+    image: alpine:3.23
+    command: ["sh", "/gerar-certificados.sh"]
+    networks: [exposicao]
+    volumes:
+      - servicos-certs:/certs
+      - ./servicos/gerar-certificados.sh:/gerar-certificados.sh:ro
 
   db:
     image: postgres:17
@@ -67,7 +85,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    networks: [borda, dados]
+    networks: [borda, dados, integracoes]
     environment:
       APP_ENV: dev
       # Só o IP fixo do proxy pode informar o IP do cliente (013/R3.1; lido pelo uvicorn).
@@ -87,13 +105,31 @@ services:
       CRYPTO_ACTIVE_KEY: "1"
       # O front em HTML, quando servido pelo proxy no mesmo domínio (anti-CSRF do refresh).
       # Origens aceitas no refresh (anti-CSRF, 002/R3.6); trocável junto com as portas do proxy.
-      CORS_ORIGINS: ${SGS_CORS_ORIGINS:-https://localhost,https://localhost:3000}
+      CORS_ORIGINS: ${SGS_CORS_ORIGINS:-${SGS_PUBLIC_URL:-https://localhost},https://localhost:3000}
+      # OIDC do laboratório (spec 004, design § Configuração). O `iss` é o endereço público; a
+      # descoberta, o JWKS e o token vão direto ao Keycloak pela rede `integracoes`, com a CA de
+      # laboratório. O segredo de exemplo é recusado em prod (004/R5.4).
+      OIDC_ISSUER: ${SGS_PUBLIC_KEYCLOAK_URL:-https://keycloak.localhost}/realms/sgs
+      OIDC_DISCOVERY_URL: https://keycloak:8443/realms/sgs/.well-known/openid-configuration
+      OIDC_CA_FILE: /certs-servicos/ca.crt
+      OIDC_CLIENT_ID: sgs-api
+      OIDC_CLIENT_SECRET: sgs-lab-exemplo-oidc
+      OIDC_REDIRECT_URI: ${SGS_PUBLIC_URL:-https://localhost}/api/v1/auth/oidc/callback
+      FRONTEND_URL: ${SGS_PUBLIC_URL:-https://localhost}/
+      OIDC_GROUPS_CLAIM: groups
     volumes:
       # Só o certificado da CA. O usuário da API tem o mesmo uid do postgres (999); por isso a
       # chave do servidor não pode ser montada aqui.
       - type: volume
         source: db-certs
         target: /certs
+        read_only: true
+        volume:
+          subpath: ca
+      # Só a CA de laboratório (LDAP e Keycloak; S3 na 005).
+      - type: volume
+        source: servicos-certs
+        target: /certs-servicos
         read_only: true
         volume:
           subpath: ca
@@ -104,6 +140,8 @@ services:
         target: crypto-keys.json
     depends_on:
       db-certs:
+        condition: service_completed_successfully
+      servicos-certs:
         condition: service_completed_successfully
       db:
         condition: service_healthy
@@ -121,11 +159,66 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  # Provedor OIDC de laboratório (spec 004, R5.2; design § Keycloak), sem porta no host: o
+  # navegador chega pelo proxy (keycloak.localhost) e a API direto, pela rede `integracoes`.
+  # Realm `sgs` importado na primeira subida; usuários, grupos e senhas no README. Modo `start`, não
+  # `start-dev`: o perfil dev abre HTTP em 8080 mesmo com KC_HTTP_ENABLED=false. Banco H2 local
+  # (dev-file), descartado com o contêiner; o realm volta do arquivo.
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    command: ["start", "--import-realm"]
+    networks: [integracoes, exposicao]
+    environment:
+      KC_DB: dev-file
+      # `iss` e endpoint de autorização públicos; descoberta, JWKS e token pedidos em
+      # https://keycloak:8443 voltam com endereços internos (backchannel dinâmico).
+      KC_HOSTNAME: ${SGS_PUBLIC_KEYCLOAK_URL:-https://keycloak.localhost}
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "false"
+      KC_HTTPS_CERTIFICATE_FILE: /certs/server.crt
+      KC_HTTPS_CERTIFICATE_KEY_FILE: /certs/server.key
+      # Saúde só no loopback do contêiner, em HTTP, para o healthcheck.
+      KC_HEALTH_ENABLED: "true"
+      KC_HTTP_MANAGEMENT_SCHEME: http
+      KC_HTTP_MANAGEMENT_HOST: 127.0.0.1
+      # Administrador só do laboratório (console em keycloak.localhost/admin).
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: sgs-lab-exemplo-admin
+      # Lido pelo realm-sgs.json (redirect URI exata do cliente sgs-api).
+      SGS_PUBLIC_URL: ${SGS_PUBLIC_URL:-https://localhost}
+    volumes:
+      - ./keycloak/realm-sgs.json:/opt/keycloak/data/import/realm-sgs.json:ro
+      - type: volume
+        source: servicos-certs
+        target: /certs
+        read_only: true
+        volume:
+          subpath: keycloak
+    depends_on:
+      servicos-certs:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 &&
+          grep -q ' 200 ' <&3
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
   proxy:
     image: caddy:2
     networks:
       borda:
         ipv4_address: ${SGS_BORDA_PROXY_IP:?defina SGS_BORDA_PROXY_IP (ver README)}
+      exposicao: {}
     ports:
       # Portas do host trocáveis (padrão 80 e 443), para testes e2e em máquinas com elas ocupadas.
       - "${SGS_HTTP_PORT:-80}:80"
@@ -136,9 +229,18 @@ services:
       - ../frontend/app:/srv/frontend:ro
       - caddy-data:/data
       - caddy-config:/config
+      # Só a CA de laboratório, para conferir o certificado do Keycloak (e do S3, na 005).
+      - type: volume
+        source: servicos-certs
+        target: /certs-servicos
+        read_only: true
+        volume:
+          subpath: ca
     depends_on:
       api:
         condition: service_healthy
+      servicos-certs:
+        condition: service_completed_successfully
     restart: unless-stopped
 
 networks:
@@ -147,6 +249,9 @@ networks:
       config:
         - subnet: ${SGS_BORDA_SUBNET:?defina SGS_BORDA_SUBNET (ver README)}
   dados: {}
+  integracoes:
+    internal: true
+  exposicao: {}
 
 secrets:
   jwt_keys:
@@ -157,5 +262,6 @@ secrets:
 volumes:
   db-data:
   db-certs:
+  servicos-certs:
   caddy-data:
   caddy-config:

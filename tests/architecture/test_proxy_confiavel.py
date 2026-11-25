@@ -88,22 +88,29 @@ def test_sem_forwarded_allow_ips_curinga_nem_subnet() -> None:
 
 def test_compose_exige_subnet_e_ip_do_proxy() -> None:
     """013/R3.7: sem as variáveis o compose não resolve; as redes separam borda e dados, e o banco
-    fica fora da borda e sem porta publicada."""
+    fica fora da borda e sem porta publicada. 004 (design § Redes; D004-13): os serviços de
+    laboratório ficam em `integracoes` (com a API) e `exposicao` (com o proxy), sem porta no host,
+    e proxy e API continuam só com a `borda` em comum (013/R3.1)."""
     sem_variaveis = _config({})
     assert sem_variaveis.returncode != 0
     assert "SGS_BORDA" in sem_variaveis.stderr
 
-    servicos = _resolvido()["services"]
+    config = _resolvido()
+    servicos = config["services"]
 
     redes = {nome: set(s["networks"]) for nome, s in servicos.items()}
     assert redes == {
         "db-certs": {"dados"},
+        "servicos-certs": {"exposicao"},
         "db": {"dados"},
-        "api": {"borda", "dados"},
-        "proxy": {"borda"},
+        "api": {"borda", "dados", "integracoes"},
+        "keycloak": {"integracoes", "exposicao"},
+        "proxy": {"borda", "exposicao"},
     }
-    assert "ports" not in servicos["api"]
-    assert "ports" not in servicos["db"]
+    assert redes["api"] & redes["proxy"] == {"borda"}
+    assert config["networks"]["integracoes"]["internal"] is True
+    for servico in ("api", "db", "keycloak"):
+        assert "ports" not in servicos[servico], servico
 
 
 def test_subnets_das_suites_sao_unicas_e_fora_dos_pools_do_docker() -> None:
@@ -114,6 +121,7 @@ def test_subnets_das_suites_sao_unicas_e_fora_dos_pools_do_docker() -> None:
         "TLS": RAIZ / "tests" / "e2e" / "test_tls_banco.py",
         "FRONT_UI": RAIZ / "tests" / "e2e_front" / "conftest.py",
         "AUDITORIA": RAIZ / "tests" / "e2e" / "test_auditoria_proxy.py",
+        "KEYCLOAK": RAIZ / "tests" / "e2e" / "test_lab_keycloak.py",
     }
     assert set(suites) == set(SUBNETS)
     for suite, arquivo in suites.items():

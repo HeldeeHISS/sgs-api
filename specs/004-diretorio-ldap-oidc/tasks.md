@@ -147,7 +147,7 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
   - Bloqueada por: T3
   - Requisitos: R1.12
   - Pronto quando: `tests/unit/identity/test_cron.py` e `tests/integration/identity/test_sync_schedule.py` passam
-- [ ] T8. Laboratório: peças compartilhadas e Keycloak
+- [x] T8. Laboratório: peças compartilhadas e Keycloak
   - Frente: B
   - Primeira hora: conferir que o `iss` é o mesmo pela descoberta pública (via Caddy) e pela interna. Se não for, parar e registrar a alternativa no design antes de seguir (design § Riscos).
   - Faz:
@@ -164,6 +164,8 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
     - o mesmo `issuer` pelos dois caminhos;
     - PKCE S256 exigido;
     - a claim `groups` no `id_token` de um usuário de exemplo.
+  - Concluída em 25/11/2026 (`make check` verde). Prova: `tests/e2e/test_lab_keycloak.py::test_issuer_e_o_mesmo_pela_descoberta_publica_e_pela_interna`, `::test_cliente_exige_pkce_s256_e_a_redirect_uri_exata` e `::test_id_token_traz_a_claim_groups` (`-m slow`). O `iss` é o mesmo nos dois caminhos.
+  - Nota de execução (Rafael, 25/11/2026): Keycloak 26.8.2 em `start --import-realm`, e não em `start-dev` (design § Keycloak). O perfil dev abre HTTP na 8080 mesmo com `KC_HTTP_ENABLED=false`; `test_keycloak_so_atende_https_na_rede` confere. Fora da lista da frente, com autorização: `tests/architecture/test_proxy_confiavel.py` (redes e suíte novas).
 - [ ] T13. Laboratório: `slapd` só com LDAPS
   - Frente: B
   - Faz:

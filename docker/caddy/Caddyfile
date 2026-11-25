@@ -26,3 +26,17 @@ localhost {
 		file_server
 	}
 }
+
+# Spec 004 (design § Caddy e compose; D004-14): o Keycloak de laboratório num host próprio, na mesma
+# porta. O Caddy confere o certificado do Keycloak pela CA de laboratório (volume servicos-certs,
+# só ca/) e pelo nome `keycloak`. Sem cabeçalhos do front: as páginas são do Keycloak.
+keycloak.localhost {
+	tls internal
+
+	reverse_proxy https://keycloak:8443 {
+		transport http {
+			tls_trust_pool file /certs-servicos/ca.crt
+			tls_server_name keycloak
+		}
+	}
+}

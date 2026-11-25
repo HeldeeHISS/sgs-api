@@ -20,7 +20,7 @@ Visão geral para o grupo e os professores: o [relatório geral do projeto na Et
 Os relatórios de 09/11 e 10/11/2026 são **registros históricos**, preservados sem alteração. Eles não refletem a interface da Etapa 06 nem a aprovação do cenário D das 30 tuplas (ver § Registros históricos).
 
 ## Subir o ambiente (Docker)
-Pré-requisito: Docker 26 ou mais novo, com Compose v2 (o compose monta partes de um volume com `subpath`). O compose sobe a API, o PostgreSQL 17 com TLS e um proxy TLS (Caddy). LDAP, Keycloak e S3 local entram nas specs 004 e 005.
+Pré-requisito: Docker 26 ou mais novo, com Compose v2 (o compose monta partes de um volume com `subpath`). O compose sobe a API, o PostgreSQL 17 com TLS, um proxy TLS (Caddy) e o Keycloak de laboratório (spec 004). O LDAP e o S3 local entram na 004/T13 e na 005/T8.
 
 ```bash
 mkdir -p secrets
@@ -46,6 +46,12 @@ curl -k https://localhost/health/ready      # {"status":"ok"}
   ```
   No Windows, o `curl.exe` (Schannel) precisa também de `--ssl-no-revoke`, porque a CA local não publica lista de revogação.
 - Documentação interativa (só em `dev` e `test`): hoje **não** abre pelo proxy, porque desde a spec 012 (T1) o `/docs` cai no front. Use o contorno do [guia de execução](docs/GUIA_EXECUCAO_LOCAL_SGS_RECIFE.md) § 1.6 ou o contrato [contracts/openapi.yaml](contracts/openapi.yaml). Achado A1 do [relatório de implementação](docs/RELATORIO_IMPLEMENTACAO_SGS_RECIFE.md).
+- **Provedor OIDC de laboratório (spec 004, R5.2).** O Keycloak sobe com o realm `sgs` (`docker/keycloak/realm-sgs.json`) e responde em `https://keycloak.localhost`, pelo mesmo Caddy (os navegadores levam `*.localhost` à própria máquina; no `curl`, use `--resolve keycloak.localhost:443:127.0.0.1`). A API fala com ele direto, em `https://keycloak:8443`, pela rede interna `integracoes`, e não depende dele para ficar saudável. Ele deixa o `--wait` da primeira subida uns 30 a 60 s mais longo e usa perto de 1 GB de memória.
+  - Usuários de exemplo, um por papel da spec 003, cada um no seu grupo (claim `groups`): `oidc.admin.ti`, `oidc.gestor.dados`, `oidc.coord.tecnico`, `oidc.tecnico.ds4` (grupo `oidc-tecnico-ds-iv`), `oidc.gestor.unidade` (`oidc-gestor-unidade-cnes-1000002`), `oidc.diretoria` e `oidc.auditor`. Senha de todos: `sgs-lab-exemplo-usuario`.
+  - Cliente `sgs-api`: confidencial, PKCE S256, segredo `sgs-lab-exemplo-oidc`. Console em `https://keycloak.localhost/admin`, usuário `admin`, senha `sgs-lab-exemplo-admin`.
+  - Essas senhas são fixas, versionadas e só do laboratório (D004-15). O marcador `exemplo` faz a API recusá-las em `prod` (004/R5.4).
+  - O serviço `servicos-certs` gera no volume de mesmo nome, como o `db-certs` faz para o banco, uma CA de laboratório e os certificados de `ldap`, `keycloak` e `s3`. A chave da CA é descartada.
+- **Portas e endereços públicos.** Com `SGS_HTTPS_PORT` diferente de 443, ajuste junto, em `docker/.env`, `SGS_PUBLIC_URL` e `SGS_PUBLIC_KEYCLOAK_URL` (padrões `https://localhost` e `https://keycloak.localhost`). Elas alimentam ao mesmo tempo o Keycloak (endereço público e *redirect URI*) e a API (`OIDC_ISSUER`, `OIDC_REDIRECT_URI`, `FRONTEND_URL` e a origem padrão de `CORS_ORIGINS`). Exemplo: `SGS_HTTPS_PORT=8443`, `SGS_PUBLIC_URL=https://localhost:8443` e `SGS_PUBLIC_KEYCLOAK_URL=https://keycloak.localhost:8443`.
 - Parar: `docker compose -f docker/compose.yml down` (com `-v`, apaga também o banco).
 
 ## Desenvolvimento
