@@ -19,7 +19,7 @@ from src.modules.identity.domain.login import EstadoDeLogin
 from src.modules.identity.domain.oidc import OidcLoginRequest
 from src.modules.identity.domain.sessions import AuthSession, RefreshToken
 from src.modules.identity.domain.sincronizacao import EstadoLocal
-from src.modules.identity.domain.users import User
+from src.modules.identity.domain.users import User, UserSource
 
 
 class UserRepository(Protocol):
@@ -29,6 +29,14 @@ class UserRepository(Protocol):
 
     async def get_by_username(self, username: str) -> User | None:
         """Busca sem diferenciar maiúsculas de minúsculas (o nome é normalizado)."""
+        ...
+
+    async def get_by_email(self, email: str) -> User | None:
+        """Busca sem diferenciar maiúsculas de minúsculas (o e-mail é guardado em minúsculas)."""
+        ...
+
+    async def get_by_external_id(self, source: UserSource, external_id: str) -> User | None:
+        """A conta de diretório pela origem e pelo identificador externo (spec 004)."""
         ...
 
 

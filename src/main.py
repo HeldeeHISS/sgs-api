@@ -37,6 +37,7 @@ from src.modules.identity.api import auth, jwks
 from src.modules.identity.api.sincronizacao import transacoes_da_sincronizacao
 from src.modules.identity.application.sincronizacao import marcar_interrompidas
 from src.modules.identity.infrastructure.directory_repository import SqlDirectoryRepository
+from src.modules.identity.infrastructure.ldap3_directory import Ldap3Directory, LdapConfig
 from src.modules.identity.infrastructure.passwords import Argon2PasswordHasher
 from src.modules.identity.infrastructure.repository import (
     SqlLoginStateRepository,
@@ -118,6 +119,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.repositorio_de_atribuicoes = SqlRepositorioDeAtribuicoes
     app.state.repositorio_de_mapeamentos = SqlRepositorioDeMapeamentos
     app.state.repositorio_do_diretorio = SqlDirectoryRepository
+    # Spec 004: sem LDAP_URL, o LDAP fica desligado (login LDAP e sincronização respondem 503).
+    ldap = LdapConfig.from_settings(settings)
+    app.state.diretorio = None if ldap is None else Ldap3Directory(ldap)
     # Membros dos grupos do diretório: sem `user_groups` até a 004/T1; a 004/T4 troca pela
     # leitura real (003/T8, Perguntas em aberto).
     app.state.membros_de_grupo = SemMembrosDeGrupo

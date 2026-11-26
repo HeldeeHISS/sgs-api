@@ -19,6 +19,7 @@ from src.modules.identity.domain.login import (
     MENSAGEM_DE_CREDENCIAIS,
     TENTATIVAS_DE_MFA,
     VALIDADE_DO_REFRESH,
+    EstadoDeLogin,
 )
 from src.modules.identity.domain.passwords import PasswordHasher
 from src.modules.identity.domain.ports import (
@@ -43,6 +44,7 @@ __all__ = [
     "TokensEmitidos",
     "cadastrar_mfa",
     "confirmar_mfa",
+    "desafiar_ou_abrir_sessao",
     "entrar",
     "renovar",
     "sair",
@@ -152,8 +154,16 @@ async def entrar(
         return Falha()
 
     await deps.estados.registrar_sucesso(usuario.id, agora)
+    return await desafiar_ou_abrir_sessao(usuario, estado, origem=origem, deps=deps)
+
+
+async def desafiar_ou_abrir_sessao(
+    usuario: User, estado: EstadoDeLogin, *, origem: Origem, deps: Identidade
+) -> ResultadoDoLogin:
+    """Depois da senha conferida (local ou no diretório): o desafio do 2FA (R1.1, R1.2) ou, com
+    o 2FA desligado em dev, a sessão."""
     if not deps.mfa_obrigatorio:  # só em dev (Settings recusa fora dele)
-        tokens = await _abrir_sessao(deps, usuario, "pwd", origem)
+        tokens = await _abrir_sessao(deps, usuario, _amr(usuario, otp=False), origem)
         return ResultadoDoLogin(tokens=tokens)
     finalidade = MfaPurpose.VERIFY if estado.mfa_enabled else MfaPurpose.ENROLL
     emitido = deps.tokens.issue_mfa_token(usuario.id, finalidade)
@@ -225,7 +235,13 @@ async def _concluir_mfa(
     await deps.estados.concluir_mfa(usuario.id, passo, ativar=ativar)
     if ativar:
         await _auditar(deps, "auth.mfa_enrolled", origem, usuario.id, {})
-    return await _abrir_sessao(deps, usuario, "pwd+otp", origem)
+    return await _abrir_sessao(deps, usuario, _amr(usuario, otp=True), origem)
+
+
+def _amr(usuario: User, *, otp: bool) -> str:
+    """Como a senha foi conferida: `ldap` no diretório (004, D004-16), `pwd` na senha local."""
+    base = "ldap" if usuario.source is UserSource.LDAP else "pwd"
+    return f"{base}+otp" if otp else base
 
 
 async def _dono_do_desafio(

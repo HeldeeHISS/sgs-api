@@ -121,7 +121,7 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
   - Requisitos: R1.5, R1.6, R1.7, R1.8, R1.9, R1.10, R4.2
   - Pronto quando: `tests/integration/identity/test_ldap_sync.py` passa
   - Concluída em 25/11/2026 (`make check` verde). Prova: `tests/integration/identity/test_ldap_sync.py` (arquivo inteiro passa), em especial `::test_diretorio_fora_marca_falhou_sem_tocar_em_dado_local` e `::test_mudanca_de_grupo_recalcula_as_derivadas_da_003`. Notas: o conflito com outro usuário do mesmo retrato grava `usuario_existente_id = null`; entrada inválida no diretório falha a execução inteira (pergunta em aberto em `requirements.md`, 004/T3).
-- [ ] T5. Login por LDAP
+- [x] T5. Login por LDAP
   - Frente: A
   - Faz:
     - `provider` em `LoginIn`;
@@ -132,6 +132,7 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
   - Bloqueada por: T1, T2, 003/T8
   - Requisitos: R2.1, R2.2, R2.3, R2.4, R4.1, R4.3, R4.4
   - Pronto quando: `tests/integration/identity/test_ldap_login.py` passa
+  - Concluída em 25/11/2026 (`make check` verde). Prova: `tests/integration/identity/test_ldap_login.py` (arquivo inteiro passa), em especial `::test_cinco_falhas_bloqueiam_e_o_bloqueio_vem_antes_do_bind`, `::test_conflito_de_email_recusa_sem_criar_conta` e `::test_2fa_do_usuario_ldap_abre_sessao_com_amr_ldap_otp`. Notas: sem LDAP_URL, `provider = "ldap"` responde 503, como a rota de sincronização; no login de conta existente, um e-mail novo que já é de outra conta mantém o antigo, como na sincronização; com o 2FA desligado em dev, o `amr` é `ldap`; o fim de `entrar` virou `desafiar_ou_abrir_sessao`, pública, para o login LDAP reusar.
 - [ ] T4. Rotas da sincronização, das execuções e dos grupos
   - Frente: A
   - Faz:
