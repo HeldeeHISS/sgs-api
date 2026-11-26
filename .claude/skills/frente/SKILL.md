@@ -22,7 +22,7 @@ Sem uma dessas letras, pergunte a frente antes de seguir.
 ## Sessão de tarefa
 Uma tarefa por sessão. Leia `docs/implementacao/README.md` e o guia da frente.
 
-1. **Atualize:** `git fetch origin && git rebase origin/feat/004-005`. Se `git log origin/feat/004-005..HEAD` mostrar commits, há uma tarefa ainda não integrada: mostre-a e pergunte se a pessoa quer integrar (passo 6) antes de começar outra.
+1. **Atualize:** `git fetch origin && git rebase origin/feat/004-005`. Se `git log origin/feat/004-005..HEAD` mostrar commits, há uma tarefa ainda não integrada: mostre-a e pergunte se a pessoa quer integrar (passo 7) antes de começar outra.
 2. **Escolha a tarefa:** a primeira da linha "Ordem" do guia que ainda está `[ ]` no `tasks.md` da spec dela e cujos bloqueios ("Bloqueada por") já estão integrados. Para cada bloqueio `NNN/Tn`:
 
    ```bash
@@ -37,8 +37,11 @@ Uma tarefa por sessão. Leia `docs/implementacao/README.md` e o guia da frente.
    ```
 
 4. **Chame a pessoa e pare** se a tarefa pedir mudança de requisito, de design, de dependência (`pyproject.toml`, `uv.lock`) ou de arquivo fora da lista da frente, ou se cair em `docs/implementacao/README.md` § Quando parar e chamar os donos.
-5. **Mostre o resumo:** `git show --stat HEAD`, os testes que provam a tarefa e o resultado do `make check`. Espere a pessoa revisar e responder "integre".
-6. **Integre** depois do "integre":
+5. **Revise o próprio diff** antes de mostrar. Rode a skill `code-review` sobre `origin/feat/004-005..HEAD` e confira o checklist de `steering/security.md` item a item. O que for defeito desta tarefa, corrija com teste, no mesmo commit (`git commit --amend`), e rode o `make check` de novo. O que pedir decisão ou for de outra tarefa vai para o resumo.
+
+   Pronto quando: cada achado está corrigido ou listado para a pessoa.
+6. **Mostre o resumo:** `git show --stat HEAD`, os testes que provam a tarefa, o resultado do `make check` e os achados da revisão, corrigidos e pendentes. Espere a pessoa revisar e responder "integre".
+7. **Integre** depois do "integre":
 
    ```bash
    git fetch origin && git rebase origin/feat/004-005 && make check && git push origin HEAD:feat/004-005
