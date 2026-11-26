@@ -68,6 +68,8 @@ def _compose(
             "SGS_HTTP_PORT": PORTA_HTTP,
             "SGS_HTTPS_PORT": PORTA_HTTPS,
             "SGS_CORS_ORIGINS": BASE,  # o refresh confere a Origin (002/R3.6; spec 012, R2.4)
+            # FRONTEND_URL sai daqui, e a API exige a origem dele em CORS_ORIGINS (004/T6).
+            "SGS_PUBLIC_URL": BASE,
         }
         | _BORDA[0].ambiente()
     )

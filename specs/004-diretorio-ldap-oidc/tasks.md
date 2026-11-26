@@ -192,7 +192,8 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
   - Bloqueada por: T0
   - Requisitos: R3.2, R3.6, R3.8, R5.4
   - Pronto quando: `tests/unit/identity/test_oidc_validacao.py` e os testes OIDC de `tests/unit/core/test_config.py` passam
-- [ ] T10. Entrada OIDC no front-end
+- [x] T10. Entrada OIDC no front-end
+  - Concluída em 25/11/2026 (`make check` verde). Prova: `tests/e2e_front/test_login_oidc.py`
   - Frente: B
   - Faz:
     - `views/login.js` mostra o link "Entrar pelo provedor de identidade" só com `oidc = true` em `/auth/provedores`;
