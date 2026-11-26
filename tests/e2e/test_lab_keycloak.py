@@ -48,6 +48,14 @@ PORTA_HTTP = "18083"
 PORTA_HTTPS = "18446"
 PUBLICA = f"https://localhost:{PORTA_HTTPS}"
 KEYCLOAK = f"https://keycloak.localhost:{PORTA_HTTPS}"
+# Lidos por tests/architecture/test_compose_configuracao.py: a API tem de aceitar esta configuração.
+ARQUIVOS_COMPOSE = (COMPOSE, COMPOSE_TESTE)
+AMBIENTE_COMPOSE = {
+    "SGS_HTTP_PORT": PORTA_HTTP,
+    "SGS_HTTPS_PORT": PORTA_HTTPS,
+    "SGS_PUBLIC_URL": PUBLICA,
+    "SGS_PUBLIC_KEYCLOAK_URL": KEYCLOAK,
+}
 ISSUER = f"{KEYCLOAK}/realms/sgs"
 CALLBACK = f"{PUBLICA}/api/v1/auth/oidc/callback"
 ENDPOINT_DE_TROCA = "https://keycloak:8443/realms/sgs/protocol/openid-connect/token"
@@ -106,16 +114,7 @@ print(abertas)
 
 def _docker(*args: str, check: bool = True, timeout: int = 120) -> Resultado:
     assert DOCKER is not None
-    ambiente = (
-        os.environ
-        | {
-            "SGS_HTTP_PORT": PORTA_HTTP,
-            "SGS_HTTPS_PORT": PORTA_HTTPS,
-            "SGS_PUBLIC_URL": PUBLICA,
-            "SGS_PUBLIC_KEYCLOAK_URL": KEYCLOAK,
-        }
-        | _BORDA[0].ambiente()
-    )
+    ambiente = os.environ | AMBIENTE_COMPOSE | _BORDA[0].ambiente()
     # Comandos fixos deste arquivo, sem entrada externa.
     return subprocess.run(  # noqa: S603
         [DOCKER, *args],
@@ -129,7 +128,7 @@ def _docker(*args: str, check: bool = True, timeout: int = 120) -> Resultado:
 
 
 def _compose(*args: str, check: bool = True, timeout: int = 120) -> Resultado:
-    arquivos = ["-f", str(COMPOSE), "-f", str(COMPOSE_TESTE), "-p", PROJETO]
+    arquivos = [*(a for f in ARQUIVOS_COMPOSE for a in ("-f", str(f))), "-p", PROJETO]
     return _docker("compose", *arquivos, *args, check=check, timeout=timeout)
 
 

@@ -32,6 +32,9 @@ RAIZ = Path(__file__).resolve().parents[2]
 COMPOSE = RAIZ / "docker" / "compose.yml"
 COMPOSE_TESTE = RAIZ / "docker" / "compose.test.yml"
 PROJETO = "sgs-api-e2e-ldap"
+# Lidos por tests/architecture/test_compose_configuracao.py: a API tem de aceitar esta configuração.
+ARQUIVOS_COMPOSE = (COMPOSE, COMPOSE_TESTE)
+AMBIENTE_COMPOSE: dict[str, str] = {}
 DOCKER = shutil.which("docker")
 
 # docker/ldap/seed.ldif
@@ -84,14 +87,14 @@ def _docker(
         check=check,
         timeout=timeout,
         cwd=RAIZ,
-        env=os.environ | _BORDA[0].ambiente(),
+        env=os.environ | AMBIENTE_COMPOSE | _BORDA[0].ambiente(),
     )
 
 
 def _compose(
     *args: str, check: bool = True, timeout: int = 120, entrada: str | None = None
 ) -> Resultado:
-    arquivos = ["-f", str(COMPOSE), "-f", str(COMPOSE_TESTE), "-p", PROJETO]
+    arquivos = [*(a for f in ARQUIVOS_COMPOSE for a in ("-f", str(f))), "-p", PROJETO]
     return _docker("compose", *arquivos, *args, check=check, timeout=timeout, entrada=entrada)
 
 

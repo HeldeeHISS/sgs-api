@@ -32,6 +32,9 @@ PROJETO = "sgs-api-e2e-front"
 PORTA_HTTPS = "18443"
 PORTA_HTTP = "18080"
 BASE = f"https://localhost:{PORTA_HTTPS}"
+# Lidos por tests/architecture/test_compose_configuracao.py: a API tem de aceitar esta configuração.
+ARQUIVOS_COMPOSE = (COMPOSE, COMPOSE_TESTE)
+AMBIENTE_COMPOSE = {"SGS_HTTP_PORT": PORTA_HTTP, "SGS_HTTPS_PORT": PORTA_HTTPS}
 CHAVES_JWT = RAIZ / "secrets" / "jwt-keys.json"
 CHAVES_DE_CIFRA = RAIZ / "secrets" / "crypto-keys.json"
 DOCKER = shutil.which("docker")
@@ -59,12 +62,14 @@ _BORDA: list[Borda] = []
 
 def _compose(*args: str, check: bool = True, timeout: int = 120) -> Resultado:
     assert DOCKER is not None
-    ambiente = (
-        os.environ
-        | {"SGS_HTTP_PORT": PORTA_HTTP, "SGS_HTTPS_PORT": PORTA_HTTPS}
-        | _BORDA[0].ambiente()
-    )
-    comando = [DOCKER, "compose", "-f", str(COMPOSE), "-f", str(COMPOSE_TESTE), "-p", PROJETO]
+    ambiente = os.environ | AMBIENTE_COMPOSE | _BORDA[0].ambiente()
+    comando = [
+        DOCKER,
+        "compose",
+        *(a for f in ARQUIVOS_COMPOSE for a in ("-f", str(f))),
+        "-p",
+        PROJETO,
+    ]
     # Comandos fixos deste arquivo, sem entrada externa.
     return subprocess.run(  # noqa: S603
         [*comando, *args],

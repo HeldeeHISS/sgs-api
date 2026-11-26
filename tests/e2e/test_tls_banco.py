@@ -21,6 +21,9 @@ pytestmark = pytest.mark.slow
 RAIZ = Path(__file__).resolve().parents[2]
 COMPOSE = RAIZ / "docker" / "compose.yml"
 PROJETO = "sgs-api-e2e-tls"
+# Lidos por tests/architecture/test_compose_configuracao.py: a API tem de aceitar esta configuração.
+ARQUIVOS_COMPOSE = (COMPOSE,)
+AMBIENTE_COMPOSE: dict[str, str] = {}
 CHAVES_JWT = RAIZ / "secrets" / "jwt-keys.json"
 CHAVES_DE_CIFRA = RAIZ / "secrets" / "crypto-keys.json"
 DOCKER = shutil.which("docker")
@@ -75,7 +78,7 @@ _BORDA: list[Borda] = []
 
 def _rodar(*comando: str, check: bool = True, timeout: int = 120) -> Resultado:
     # Comandos fixos deste arquivo, sem entrada externa.
-    ambiente = os.environ | (_BORDA[0].ambiente() if _BORDA else {})
+    ambiente = os.environ | AMBIENTE_COMPOSE | (_BORDA[0].ambiente() if _BORDA else {})
     return subprocess.run(  # noqa: S603
         comando,
         capture_output=True,
@@ -90,7 +93,14 @@ def _rodar(*comando: str, check: bool = True, timeout: int = 120) -> Resultado:
 def _compose(*args: str, check: bool = True, timeout: int = 120) -> Resultado:
     assert DOCKER is not None
     return _rodar(
-        DOCKER, "compose", "-f", str(COMPOSE), "-p", PROJETO, *args, check=check, timeout=timeout
+        DOCKER,
+        "compose",
+        *(a for f in ARQUIVOS_COMPOSE for a in ("-f", str(f))),
+        "-p",
+        PROJETO,
+        *args,
+        check=check,
+        timeout=timeout,
     )
 
 
