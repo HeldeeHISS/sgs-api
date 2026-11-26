@@ -1,5 +1,8 @@
 """Raiz de composição da API: cria o app e liga as camadas dos módulos."""
 
+import asyncio
+import contextlib
+import functools
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -10,9 +13,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from src.core import health
-from src.core.config import AppEnv, Settings, load_settings
+from src.core.config import AppEnv, Settings, SettingsError, load_settings
 from src.core.crypto import FieldCipher
 from src.core.db import create_engine, run_migrations
+from src.core.fuso import agora_em_recife
 from src.core.ids import uuid7
 from src.core.limite import LimiteDeRequisicoes
 from src.core.logging import configure_logging
@@ -35,7 +39,9 @@ from src.modules.dashboard.api import rotas as dashboard
 from src.modules.dashboard.infrastructure.consultas import SqlConsultasDashboard
 from src.modules.identity.api import auth, diretorio, jwks
 from src.modules.identity.api.sincronizacao import transacoes_da_sincronizacao
+from src.modules.identity.application.agendamento import agendar, sincronizar_agendada
 from src.modules.identity.application.sincronizacao import marcar_interrompidas
+from src.modules.identity.domain.cron import Agenda, CronInvalido, analisar
 from src.modules.identity.infrastructure.directory_repository import SqlDirectoryRepository
 from src.modules.identity.infrastructure.ldap3_directory import Ldap3Directory, LdapConfig
 from src.modules.identity.infrastructure.passwords import Argon2PasswordHasher
@@ -65,16 +71,47 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     if settings.app_env is AppEnv.DEV and settings.database_migration_url is not None:
         # Em dev a subida aplica as migrações (R1.2); em test e prod elas são um passo à parte.
         await run_migrations(settings.database_migration_url.get_secret_value(), settings)
+    agendador: asyncio.Task[None] | None = None
     if settings.ldap_url is not None:
+        transacoes = transacoes_da_sincronizacao(app.state)
         # Spec 004, design § Fluxo, Sincronização, passo 6: o que ficou em andamento morreu
         # com o processo anterior (a API roda numa instância só).
-        await marcar_interrompidas(
-            transacoes=transacoes_da_sincronizacao(app.state), agora=lambda: datetime.now(UTC)
-        )
+        await marcar_interrompidas(transacoes=transacoes, agora=lambda: datetime.now(UTC))
+        if app.state.agenda_do_diretorio is not None:  # LDAP_SYNC_CRON (R1.12)
+            agendador = asyncio.create_task(
+                agendar(
+                    app.state.agenda_do_diretorio,
+                    relogio=agora_em_recife,
+                    esperar=asyncio.sleep,
+                    rodar=functools.partial(
+                        sincronizar_agendada,
+                        diretorio=app.state.diretorio,
+                        transacoes=transacoes,
+                        gerar_id=app.state.gerar_id,
+                        agora=lambda: datetime.now(UTC),
+                    ),
+                ),
+                name="agendador-do-diretorio",
+            )
+    app.state.agendador_do_diretorio = agendador
     try:
         yield
     finally:
+        if agendador is not None:
+            agendador.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await agendador
         await app.state.engine.dispose()
+
+
+def _agenda(settings: Settings) -> Agenda | None:
+    """LDAP_SYNC_CRON no subconjunto aceito (004 design § Agendamento), ou a subida é recusada."""
+    if not settings.ldap_sync_cron:
+        return None
+    try:
+        return analisar(settings.ldap_sync_cron)
+    except CronInvalido as erro:
+        raise SettingsError(f"LDAP_SYNC_CRON: {erro}") from None
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -122,6 +159,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Spec 004: sem LDAP_URL, o LDAP fica desligado (login LDAP e sincronização respondem 503).
     ldap = LdapConfig.from_settings(settings)
     app.state.diretorio = None if ldap is None else Ldap3Directory(ldap)
+    app.state.agenda_do_diretorio = _agenda(settings) if ldap is not None else None
     # Membros dos grupos do diretório: `user_groups` com conta ativa (004/T4; 003/R3.1).
     app.state.membros_de_grupo = SqlMembrosDeGrupo
     app.state.auditoria = SqlAuditStore

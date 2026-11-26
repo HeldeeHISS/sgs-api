@@ -145,7 +145,7 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
   - Requisitos: R1.1, R1.9, R1.11, R1.14
   - Pronto quando: `tests/integration/identity/test_sync_routes.py` passa, com 401, 403 e 422
   - Concluída em 26/11/2026 (`make check` verde). Prova: `tests/integration/identity/test_sync_routes.py` (arquivo inteiro passa, com 401, 403 e 422), em especial `::test_disparo_responde_202_e_a_execucao_fica_consultavel`, `::test_segunda_execucao_em_andamento_responde_409` e `::test_mapear_grupo_atribui_o_papel_aos_membros_ativos_de_user_groups`; `tests/integration/audit/test_cobertura_rotas.py` cobre a rota nova. Notas: o `SemMembrosDeGrupo` virou `SqlMembrosDeGrupo` (`access/infrastructure/repository.py`); a execução é gravada numa transação própria, confirmada antes do 202, e a rota usa `SessaoDeNegocio` só para o 409 virar `operacao.falhou`; a resposta de listagem segue `PaginaOut` (`itens`, `total`, `pagina`, `tamanho`). A pergunta da 004/T1 sobre `grupo_id` inexistente no mapeamento continua aberta (sai como erro interno).
-- [ ] T9. Agendamento da sincronização
+- [x] T9. Agendamento da sincronização
   - Frente: A
   - Faz:
     - analisador do subconjunto de cron no domínio (fuso de Recife);
@@ -154,6 +154,7 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
   - Bloqueada por: T3
   - Requisitos: R1.12
   - Pronto quando: `tests/unit/identity/test_cron.py` e `tests/integration/identity/test_sync_schedule.py` passam
+  - Concluída em 26/11/2026 (`make check` verde). Prova: `tests/unit/identity/test_cron.py` e `tests/integration/identity/test_sync_schedule.py` (os dois arquivos inteiros passam), em especial `::test_laco_espera_ate_cada_horario_no_fuso_de_recife`, `::test_agendada_pula_se_ja_houver_execucao_em_andamento` e `::test_lifespan_inicia_o_agendador_e_o_cancela_no_desligamento`. Notas: o domínio não importa `src.core`, então `LDAP_SYNC_CRON` é conferida pela raiz de composição (`create_app`), que recusa a subida com `SettingsError`, e não por `Settings`; como as demais variáveis LDAP, só vale com `LDAP_URL`; no `.env.example` ela fica comentada, e o compose não muda.
 - [x] T8. Laboratório: peças compartilhadas e Keycloak
   - Frente: B
   - Primeira hora: conferir que o `iss` é o mesmo pela descoberta pública (via Caddy) e pela interna. Se não for, parar e registrar a alternativa no design antes de seguir (design § Riscos).

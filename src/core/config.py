@@ -155,6 +155,9 @@ class Settings(BaseSettings):
     ldap_attr_id: str = "entryUUID"  # vazio: o DN é o identificador externo (R1.5)
     ldap_attr_member: str = "member"
     ldap_page_size: int = 500
+    # Subconjunto de cron no fuso de Recife (R1.12); conferido pela raiz de composição, que usa
+    # o analisador do domínio da 004 (design § Agendamento).
+    ldap_sync_cron: str | None = None
 
     @field_validator(
         "ldap_url",
@@ -165,6 +168,7 @@ class Settings(BaseSettings):
         "ldap_user_filter",
         "ldap_group_base",
         "ldap_group_filter",
+        "ldap_sync_cron",
         mode="before",
     )
     @classmethod

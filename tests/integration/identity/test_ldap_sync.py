@@ -4,8 +4,6 @@ O diretório é um `DirectoryPort` falso em memória; o banco, os repositórios 
 derivadas da 003 são os de verdade.
 """
 
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -17,15 +15,8 @@ from sqlalchemy import text
 
 from src.core.ids import uuid7
 from src.main import create_app
-from src.modules.access.infrastructure.repository import (
-    SqlRepositorioDeAtribuicoes,
-    SqlRepositorioDeMapeamentos,
-    SqlRepositorioDePermissoes,
-)
 from src.modules.audit.application.registrar import Ator
-from src.modules.audit.infrastructure.repository import SqlAuditStore
 from src.modules.identity.application.sincronizacao import (
-    RepositoriosDaSincronizacao,
     iniciar_sincronizacao,
     marcar_interrompidas,
     sincronizar,
@@ -36,10 +27,10 @@ from src.modules.identity.domain.diretorio import (
     DirectoryUnavailable,
     DirectoryUser,
 )
-from src.modules.identity.infrastructure.directory_repository import SqlDirectoryRepository
 from src.modules.identity.infrastructure.repository import SqlUserRepository
 from tests.factories import make_settings, make_user
 from tests.integration.acesso import Sessoes, eventos
+from tests.integration.identity.sincronizacao import transacoes_de
 from tests.integration.postgres import BancoDeTeste
 
 AGORA = datetime(2026, 11, 25, 12, 0, tzinfo=UTC)
@@ -97,18 +88,7 @@ def diretorio() -> DiretorioFalso:
 
 @pytest.fixture
 def transacoes(sessoes: Sessoes) -> Any:
-    @asynccontextmanager
-    async def abrir() -> AsyncIterator[RepositoriosDaSincronizacao]:
-        async with sessoes() as sessao, sessao.begin():
-            yield RepositoriosDaSincronizacao(
-                diretorio=SqlDirectoryRepository(sessao),
-                mapeamentos=SqlRepositorioDeMapeamentos(sessao),
-                atribuicoes=SqlRepositorioDeAtribuicoes(sessao),
-                permissoes=SqlRepositorioDePermissoes(sessao),
-                auditoria=SqlAuditStore(sessao),
-            )
-
-    return abrir
+    return transacoes_de(sessoes)
 
 
 async def _executar(transacoes: Any, diretorio: DiretorioFalso) -> UUID:
