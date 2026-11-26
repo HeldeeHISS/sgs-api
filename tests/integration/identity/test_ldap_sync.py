@@ -15,7 +15,14 @@ from sqlalchemy import text
 
 from src.core.ids import uuid7
 from src.main import create_app
+from src.modules.access.application.mapeamentos import recalcular_derivadas_do_usuario
+from src.modules.access.infrastructure.repository import (
+    SqlRepositorioDeAtribuicoes,
+    SqlRepositorioDeMapeamentos,
+    SqlRepositorioDePermissoes,
+)
 from src.modules.audit.application.registrar import Ator
+from src.modules.audit.infrastructure.repository import SqlAuditStore
 from src.modules.identity.application.sincronizacao import (
     iniciar_sincronizacao,
     marcar_interrompidas,
@@ -432,3 +439,71 @@ async def test_lifespan_com_ldap_marca_as_interrompidas(
         run = await _execucao(sessoes, execucao)
 
     assert (run["status"], run["error"]) == ("falhou", "Interrompida")
+
+
+async def test_falha_ao_gravar_o_falhou_nao_escapa_da_tarefa(diretorio: DiretorioFalso) -> None:
+    """004/R1.10 (a tarefa em segundo plano não morre com exceção; o que ficar em andamento a
+    subida fecha, passo 6)"""
+
+    class _BancoFora:
+        async def __aenter__(self) -> Any:
+            raise ConnectionError("banco fora")
+
+        async def __aexit__(self, *_: object) -> None:  # pragma: no cover
+            return None
+
+    def banco_fora() -> _BancoFora:
+        return _BancoFora()
+
+    diretorio.erro = DirectoryUnavailable("Serviço de diretório indisponível")
+
+    await sincronizar(
+        uuid7(),
+        diretorio=diretorio,
+        transacoes=banco_fora,
+        ator=ATOR,
+        gerar_id=uuid7,
+        agora=lambda: AGORA,
+    )
+
+
+async def test_recalculo_mantem_as_derivadas_de_grupos_oidc(
+    sessoes: Sessoes, transacoes: Any, diretorio: DiretorioFalso
+) -> None:
+    """004/R1.8; 003/R3.2 (o recálculo recebe todos os grupos do usuário, de todas as origens)"""
+    ana = pessoa("ana")
+    diretorio.usuarios = [ana]
+    await _executar(transacoes, diretorio)
+    id_ana = (await _usuarios_ldap(sessoes))["uuid-ana"]["id"]
+    admin = make_user(username=f"admin{uuid7().hex}", email=None)
+    async with sessoes() as sessao, sessao.begin():
+        await SqlUserRepository(sessao).add(admin)
+        await sessao.execute(
+            text(
+                "INSERT INTO groups (id, source, external_id, name)"
+                " VALUES (:id, 'oidc', 'sgs-auditores', 'sgs-auditores')"
+            ),
+            {"id": (grupo_oidc := uuid7())},
+        )
+        await sessao.execute(
+            text("INSERT INTO user_groups (user_id, group_id, source) VALUES (:u, :g, 'oidc')"),
+            {"u": id_ana, "g": grupo_oidc},
+        )
+    await _mapear_auditor(sessoes, "sgs-auditores")
+    async with sessoes() as sessao, sessao.begin():
+        await recalcular_derivadas_do_usuario(
+            id_ana,
+            frozenset({grupo_oidc}),
+            ator=ATOR,
+            mapeamentos=SqlRepositorioDeMapeamentos(sessao),
+            atribuicoes=SqlRepositorioDeAtribuicoes(sessao),
+            permissoes=SqlRepositorioDePermissoes(sessao),
+            auditoria=SqlAuditStore(sessao),
+            gerar_id=uuid7,
+        )
+    assert await _papeis_derivados(sessoes, id_ana) == ["AUDITOR"]
+
+    diretorio.grupos = [grupo("ti", ana)]  # muda os grupos LDAP: a ana é recalculada
+    await _executar(transacoes, diretorio)
+
+    assert await _papeis_derivados(sessoes, id_ana) == ["AUDITOR"]

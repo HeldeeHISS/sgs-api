@@ -58,10 +58,14 @@ async def agendar(
     rodar: Callable[[], Awaitable[object]],
 ) -> None:
     """Laço do agendador. Uma falha numa execução vai para o log e não para o laço."""
+    referencia = relogio()
     while True:
-        proximo = agenda.proximo(relogio())
+        proximo = agenda.proximo(referencia)
         await esperar(max((proximo - relogio()).total_seconds(), 0.0))
         try:
             await rodar()
         except Exception as erro:
             _log.error("sincronização agendada falhou ao iniciar: %s", type(erro).__name__)
+        # A espera é monotônica e o relógio é de parede: acordar um pouco antes não pode
+        # disparar o mesmo horário de novo.
+        referencia = max(relogio(), proximo)

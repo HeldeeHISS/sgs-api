@@ -9,6 +9,7 @@ meio, nada fica criado pela metade.
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import UUID
 
 from src.modules.access.application.mapeamentos import recalcular_derivadas_do_usuario
@@ -74,21 +75,31 @@ async def entrar_por_ldap(
     if local is not None and local.source is not UserSource.LDAP:  # R4.1
         await _auditar(deps, "auth.login_failed", origem, None, {"motivo": "credenciais"})
         return Falha()
-    if local is not None:
-        estado = await deps.estados.estado(local.id)
-        if estado is not None and estado.bloqueado(agora):  # antes do bind (design § Segurança)
-            await _auditar(deps, "auth.login_failed", origem, local.id, {"motivo": "bloqueado"})
-            return Falha()
-    if diretorio.porta is None:
+    if await _bloqueada(deps, local, agora):  # antes de qualquer chamada ao diretório
+        await _auditar(deps, "auth.login_failed", origem, _id(local), {"motivo": "bloqueado"})
+        return Falha()
+    porta = diretorio.porta
+    if porta is None:
         return await _indisponivel(deps, origem, local)
 
     try:
-        lido = await _ler_do_diretorio(diretorio.porta, username, senha)
+        encontrado = await porta.find_user(username)  # R2.2: o adaptador escapa o filtro
+        if encontrado is None:
+            await _falha_de_credencial(deps, origem, local)
+            return Falha()
+        # A conta é a do `external_id`: com o login renomeado no diretório, o `username` local
+        # ainda é o antigo, e o bloqueio e as falhas precisam cair nela (002/R1.4).
+        conta = await deps.usuarios.get_by_external_id(UserSource.LDAP, encontrado.external_id)
+        alvo = conta or local
+        if alvo is not local and await _bloqueada(deps, alvo, agora):  # antes do bind
+            await _auditar(deps, "auth.login_failed", origem, _id(alvo), {"motivo": "bloqueado"})
+            return Falha()
+        if not await porta.verify_password(encontrado.dn, senha):
+            await _falha_de_credencial(deps, origem, alvo)
+            return Falha()
+        lido = _Lido(usuario=encontrado, grupos=await porta.groups_of(encontrado))
     except DirectoryUnavailable:
         return await _indisponivel(deps, origem, local)
-    if lido is None:
-        await _falha_de_credencial(deps, origem, local)
-        return Falha()
 
     usuario = await _provisionar(lido.usuario, origem=origem, deps=deps, diretorio=diretorio)
     if isinstance(usuario, Falha):
@@ -101,12 +112,15 @@ async def entrar_por_ldap(
     return await desafiar_ou_abrir_sessao(usuario, estado, origem=origem, deps=deps)
 
 
-async def _ler_do_diretorio(porta: DirectoryPort, username: str, senha: str) -> _Lido | None:
-    """Passos 3, 4 e a leitura do 6: None se o usuário não está no diretório ou a senha errou."""
-    encontrado = await porta.find_user(username)  # R2.2: o adaptador escapa o filtro
-    if encontrado is None or not await porta.verify_password(encontrado.dn, senha):
-        return None
-    return _Lido(usuario=encontrado, grupos=await porta.groups_of(encontrado))
+async def _bloqueada(deps: Identidade, conta: User | None, agora: datetime) -> bool:
+    if conta is None:
+        return False
+    estado = await deps.estados.estado(conta.id)
+    return estado is not None and estado.bloqueado(agora)
+
+
+def _id(conta: User | None) -> UUID | None:
+    return None if conta is None else conta.id
 
 
 async def _provisionar(
@@ -178,9 +192,11 @@ async def _espelhar_grupos(
         )
         ids.add(gravado.id)
     await diretorio.repositorio.replace_user_groups(usuario.id, "ldap", ids)
+    # O recálculo recebe todos os grupos atuais do usuário, de todas as origens (003/R3.2).
+    outros = await diretorio.repositorio.groups_of_user(usuario.id, "oidc")
     await recalcular_derivadas_do_usuario(
         usuario.id,
-        frozenset(ids),
+        frozenset(ids) | outros,
         # O recálculo é ato do sistema, disparado pelo login (013/R1.1).
         ator=Ator(
             tipo="sistema",

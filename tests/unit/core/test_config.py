@@ -666,6 +666,15 @@ def test_ldap_aceita_ldap_com_starttls(ambiente: DefinirAmbiente, ldap: dict[str
     assert load_settings().ldap_start_tls is True
 
 
+def test_ldap_recusa_ldaps_com_starttls(ambiente: DefinirAmbiente, ldap: dict[str, str]) -> None:
+    """004/R1.2 (StartTLS numa conexão que já é TLS é recusado pelo servidor: toda conexão
+    falharia)"""
+    ambiente({**VARIAVEIS_DEV, **ldap, "LDAP_START_TLS": "true"})
+
+    with pytest.raises(SettingsError, match="LDAP_START_TLS: só com ldap://"):
+        load_settings()
+
+
 @pytest.mark.parametrize(
     "url",
     ["ldap://ldap:389", "ldapi:///var/run/slapd", "https://ldap", "ldaps://", "ldaps://ldap:x"],

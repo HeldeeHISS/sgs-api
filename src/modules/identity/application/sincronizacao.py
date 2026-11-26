@@ -182,9 +182,11 @@ async def _aplicar(
         usuario_id = usuarios[external_id]
         do_usuario = {grupos[g] for g in plano.associacoes.get(external_id, frozenset())}
         await repos.diretorio.replace_user_groups(usuario_id, ORIGEM, do_usuario)
+        # O recálculo recebe todos os grupos atuais do usuário, de todas as origens (003/R3.2).
+        outros = await repos.diretorio.groups_of_user(usuario_id, "oidc")
         await recalcular_derivadas_do_usuario(
             usuario_id,
-            frozenset(do_usuario),
+            frozenset(do_usuario) | outros,
             ator=ator,
             mapeamentos=repos.mapeamentos,
             atribuicoes=repos.atribuicoes,
@@ -243,9 +245,14 @@ async def _falhou(
     ator: Ator,
     agora: Callable[[], datetime],
 ) -> None:
-    async with transacoes() as repos:
-        await repos.diretorio.finish_run(execucao_id, "falhou", agora(), error=erro)
-        await _auditar_falha(repos.auditoria, execucao_id, erro, ator)
+    try:
+        async with transacoes() as repos:
+            await repos.diretorio.finish_run(execucao_id, "falhou", agora(), error=erro)
+            await _auditar_falha(repos.auditoria, execucao_id, erro, ator)
+    except Exception as falha:
+        # Não deixa a tarefa em segundo plano morrer com exceção. A execução fica em andamento
+        # até a próxima subida da API, que a fecha como "Interrompida" (passo 6).
+        _log.error("execução do diretório não foi fechada: %s", type(falha).__name__)
 
 
 async def _auditar_falha(auditoria: AuditStore, execucao_id: UUID, erro: str, ator: Ator) -> None:

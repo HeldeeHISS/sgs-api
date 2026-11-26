@@ -292,7 +292,8 @@ def test_sgs_admin_diretorio_testar_responde_ok_ou_o_motivo(
     nenhuma_ca = tmp_path / "nao-usada.crt"
     nenhuma_ca.write_text("x", encoding="utf-8")
     # A configuração aponta para outro servidor e outra CA: --url e --ca valem por cima dela.
-    configurado = _settings_ldap("ldaps://ldap.invalido", nenhuma_ca, start_tls=start_tls)
+    invalido = "ldap://ldap.invalido" if start_tls else "ldaps://ldap.invalido"
+    configurado = _settings_ldap(invalido, nenhuma_ca, start_tls=start_tls)
     monkeypatch.setattr(sgs_admin, "load_settings", lambda: configurado)
 
     with _servidor(cert, key, start_tls=start_tls, resultado_do_bind=resultado_do_bind) as sv:

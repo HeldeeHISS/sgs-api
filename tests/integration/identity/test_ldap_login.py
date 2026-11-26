@@ -317,3 +317,21 @@ async def test_senha_vazia_nao_chega_ao_diretorio(
 
     assert resposta.status_code in {401, 422}
     assert diretorio.buscas == diretorio.binds == 0
+
+
+async def test_login_renomeado_no_diretorio_conta_falhas_e_bloqueia_a_mesma_conta(
+    cliente: httpx.AsyncClient, sessoes: Sessoes, diretorio: DiretorioFalso
+) -> None:
+    """004/R2.1; 002/R1.4 (a conta é a do `external_id`, mesmo com o `username` antigo)"""
+    await _conta_ldap(sessoes, username="ana.antiga")
+    for _ in range(5):
+        assert (await _login(cliente, "ana", "senha-errada")).status_code == 401
+    binds = diretorio.binds
+
+    bloqueado = await _login(cliente, "ana")
+
+    assert bloqueado.status_code == 401
+    assert diretorio.binds == binds
+    conta = await _conta(sessoes, ANA.external_id)
+    assert conta is not None
+    assert conta["locked_until"] is not None

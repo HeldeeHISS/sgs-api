@@ -14,6 +14,7 @@ deve gravar. Não lê nem escreve nada.
   colida mantém o antigo. Os dois casos viram conflito, e os demais usuários seguem.
 """
 
+import re
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -21,6 +22,8 @@ from uuid import UUID
 
 from src.modules.identity.domain.diretorio import DirectoryGroup, DirectorySnapshot, DirectoryUser
 from src.modules.identity.domain.users import UserSource
+
+_ESPACOS_DO_DN = re.compile(r"\s*([,=])\s*")
 
 
 @dataclass(frozen=True)
@@ -211,14 +214,20 @@ def _email_da_atualizacao(
     return dado.email
 
 
+def chave_de_dn(dn: str) -> str:
+    """O DN para comparação: o LDAP não diferencia maiúsculas nos nomes nem nos valores dos
+    atributos usuais (`uid`, `cn`, `ou`, `dc`) e ignora espaços em volta de `,` e `=`."""
+    return _ESPACOS_DO_DN.sub(r"\1", dn.strip()).lower()
+
+
 def _associacoes(
     usuarios: Iterable[DirectoryUser], grupos: Iterable[DirectoryGroup]
 ) -> dict[str, frozenset[str]]:
-    por_dn = {u.dn: u.external_id for u in usuarios}
+    por_dn = {chave_de_dn(u.dn): u.external_id for u in usuarios}
     membros: dict[str, set[str]] = {ext: set() for ext in por_dn.values()}
     for grupo in grupos:
         for dn in grupo.member_dns:
-            ext = por_dn.get(dn)
+            ext = por_dn.get(chave_de_dn(dn))
             if ext is not None:  # membro fora da busca (ou em conflito) é ignorado
                 membros[ext].add(grupo.external_id)
     return {ext: frozenset(gs) for ext, gs in membros.items()}

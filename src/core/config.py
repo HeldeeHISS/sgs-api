@@ -428,6 +428,8 @@ class Settings(BaseSettings):
             problems.append(
                 "LDAP_URL: use ldaps://host[:porta], ou ldap://host[:porta] com LDAP_START_TLS=true"
             )
+        if self.ldap_start_tls and self.ldap_url.startswith("ldaps://"):
+            problems.append("LDAP_START_TLS: só com ldap://; ldaps:// já abre a conexão em TLS")
         required = {
             "LDAP_CA_FILE": self.ldap_ca_file,
             "LDAP_BIND_DN": self.ldap_bind_dn,

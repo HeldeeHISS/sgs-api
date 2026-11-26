@@ -241,15 +241,15 @@ class Ldap3Directory:
     def _to_user(self, entry: dict[str, Any]) -> DirectoryUser | None:
         cfg = self._config
         attributes = entry.get("attributes", {})
-        login = _first(attributes.get(cfg.attr_login))
+        login = (_first(attributes.get(cfg.attr_login)) or "").strip()
         if not login:
             return None
-        email = _first(attributes.get(cfg.attr_email))
+        email = (_first(attributes.get(cfg.attr_email)) or "").strip()
         return DirectoryUser(
             external_id=self._external_id(entry),
             dn=entry["dn"],
             login=login.lower(),
-            email=email.lower() if email else None,
+            email=email.lower() or None,
             display_name=_first(attributes.get(cfg.attr_name)) or login,
         )
 

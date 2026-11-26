@@ -423,3 +423,19 @@ def test_plano_nunca_repete_username_nem_email(
     emails = [e for _, e in finais if e is not None]
     assert len(usernames) == len(set(usernames))
     assert len(emails) == len(set(emails))
+
+
+def test_membro_casa_pelo_dn_sem_diferenciar_maiusculas_nem_espacos() -> None:
+    """004/R1.8 (DN é insensível a maiúsculas; o `member` do grupo pode vir escrito diferente do
+    DN da entrada do usuário)"""
+    ana = make_dir_user("ana")
+    grupo = DirectoryGroup(
+        external_id="uuid-grupo-ti",
+        dn=f"cn=ti,{BASE_GRUPOS}",
+        name="ti",
+        member_dns=frozenset({ana.dn.upper().replace(",", ", ")}),
+    )
+
+    plano = planejar(_retrato((ana,), (grupo,)), _locais())
+
+    assert plano.associacoes["uuid-ana"] == frozenset({"uuid-grupo-ti"})

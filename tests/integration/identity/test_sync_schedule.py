@@ -225,3 +225,24 @@ def test_cron_fora_do_subconjunto_recusa_a_subida(banco: BancoDeTeste, tmp_path:
     """004/R1.12; D004-9 (recusada na subida com mensagem clara)"""
     with pytest.raises(SettingsError, match="LDAP_SYNC_CRON: dia, mês e dia da semana"):
         create_app(_settings_com_ldap(banco, tmp_path, ldap_sync_cron="30 2 * * 1"))
+
+
+async def test_acordar_um_pouco_antes_nao_dispara_duas_vezes_o_mesmo_horario() -> None:
+    """004/R1.12 (a espera é monotônica e o relógio é de parede: o próximo horário parte do
+    horário que acabou de disparar)"""
+    relogio = RelogioFalso(datetime(2026, 11, 26, 2, 0, tzinfo=RECIFE), limite=2)
+    original = relogio.esperar
+
+    async def acorda_cedo(segundos: float) -> None:
+        await original(segundos)
+        relogio.agora -= timedelta(milliseconds=2)
+
+    horarios: list[datetime] = []
+
+    async def rodar() -> None:
+        horarios.append(relogio())
+
+    with pytest.raises(_Parar):
+        await agendar(analisar("30 2 * * *"), relogio=relogio, esperar=acorda_cedo, rodar=rodar)
+
+    assert [h.date().day for h in horarios] == [26, 27]

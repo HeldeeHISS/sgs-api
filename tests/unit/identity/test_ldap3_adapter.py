@@ -250,3 +250,21 @@ def test_monta_o_servidor_com_tls_conferido(tmp_path: Path) -> None:
     assert servidor.tls.validate == ssl.CERT_REQUIRED
     assert servidor.tls.ca_certs_file == str(ca)
     assert servidor.tls.valid_names == ["ldap.teste"]
+
+
+def test_login_e_email_sem_espacos_nas_pontas(diretorio: Ldap3Directory) -> None:
+    """004/R1.5, R4.2 (o plano compara o login como `users` o guarda: sem espaços nas pontas)"""
+    entrada = {
+        "dn": "uid=ana,ou=pessoas,dc=teste",
+        "attributes": {
+            "uid": [" Ana "],
+            "mail": [" Ana@Recife.pe.gov.br "],
+            "cn": ["Ana"],
+            "entryUUID": ["uuid-ana"],
+        },
+    }
+
+    usuario = diretorio._to_user(entrada)
+
+    assert usuario is not None
+    assert (usuario.login, usuario.email) == ("ana", "ana@recife.pe.gov.br")
