@@ -37,7 +37,8 @@ class SyncConflict:
 
     tipo: TipoDeConflito
     external_id: str
-    usuario_existente_id: UUID
+    # None quando a colisão é com outro usuário do mesmo retrato, que a sincronização cria.
+    usuario_existente_id: UUID | None
 
 
 @dataclass(frozen=True)

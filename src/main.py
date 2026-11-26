@@ -2,6 +2,7 @@
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from importlib.metadata import version
 
 from fastapi import FastAPI
@@ -33,6 +34,9 @@ from src.modules.audit.infrastructure.repository import SqlAuditStore
 from src.modules.dashboard.api import rotas as dashboard
 from src.modules.dashboard.infrastructure.consultas import SqlConsultasDashboard
 from src.modules.identity.api import auth, jwks
+from src.modules.identity.api.sincronizacao import transacoes_da_sincronizacao
+from src.modules.identity.application.sincronizacao import marcar_interrompidas
+from src.modules.identity.infrastructure.directory_repository import SqlDirectoryRepository
 from src.modules.identity.infrastructure.passwords import Argon2PasswordHasher
 from src.modules.identity.infrastructure.repository import (
     SqlLoginStateRepository,
@@ -60,6 +64,12 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     if settings.app_env is AppEnv.DEV and settings.database_migration_url is not None:
         # Em dev a subida aplica as migrações (R1.2); em test e prod elas são um passo à parte.
         await run_migrations(settings.database_migration_url.get_secret_value(), settings)
+    if settings.ldap_url is not None:
+        # Spec 004, design § Fluxo, Sincronização, passo 6: o que ficou em andamento morreu
+        # com o processo anterior (a API roda numa instância só).
+        await marcar_interrompidas(
+            transacoes=transacoes_da_sincronizacao(app.state), agora=lambda: datetime.now(UTC)
+        )
     try:
         yield
     finally:
@@ -107,6 +117,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.repositorio_de_permissoes = SqlRepositorioDePermissoes
     app.state.repositorio_de_atribuicoes = SqlRepositorioDeAtribuicoes
     app.state.repositorio_de_mapeamentos = SqlRepositorioDeMapeamentos
+    app.state.repositorio_do_diretorio = SqlDirectoryRepository
     # Membros dos grupos do diretório: sem `user_groups` até a 004/T1; a 004/T4 troca pela
     # leitura real (003/T8, Perguntas em aberto).
     app.state.membros_de_grupo = SemMembrosDeGrupo

@@ -22,6 +22,8 @@ from src.modules.identity.domain.espelho_diretorio import (
     UpsertedGroup,
 )
 from src.modules.identity.domain.oidc import OidcLoginRequest
+from src.modules.identity.domain.sincronizacao import EstadoLocal, GrupoLocal, UsuarioLocal
+from src.modules.identity.domain.users import User, UserSource
 from src.modules.identity.infrastructure.tables import (
     SYNC_COUNT_COLUMNS,
     directory_sync_runs,
@@ -138,7 +140,8 @@ class SqlDirectoryRepository:
         error: str | None = None,
     ) -> None:
         conflitos = [
-            asdict(c) | {"usuario_existente_id": str(c.usuario_existente_id)} for c in conflicts
+            asdict(c) | {"usuario_existente_id": _texto_ou_nulo(c.usuario_existente_id)}
+            for c in conflicts
         ]
         await self._session.execute(
             update(directory_sync_runs)
@@ -152,10 +155,85 @@ class SqlDirectoryRepository:
             )
         )
 
+    async def fail_running_runs(self, error: str, agora: datetime) -> tuple[UUID, ...]:
+        comando = (
+            update(directory_sync_runs)
+            .where(directory_sync_runs.c.status == "em_andamento")
+            .values(status="falhou", finished_at=agora, error=error)
+            .returning(directory_sync_runs.c.id)
+        )
+        return tuple((await self._session.scalars(comando)).all())
+
+    async def local_state(self, source: OrigemDeGrupo) -> EstadoLocal:
+        contas = await self._session.execute(
+            select(
+                users.c.id,
+                users.c.source,
+                users.c.username,
+                users.c.email,
+                users.c.display_name,
+                users.c.external_id,
+                users.c.is_active,
+            )
+        )
+        grupos = await self._session.execute(
+            select(groups.c.id, groups.c.external_id, groups.c.name, groups.c.is_active).where(
+                groups.c.source == source
+            )
+        )
+        associacoes = await self._session.execute(
+            select(user_groups.c.user_id, user_groups.c.group_id).where(
+                user_groups.c.source == source
+            )
+        )
+        return EstadoLocal(
+            usuarios=tuple(
+                UsuarioLocal(**{**linha, "source": UserSource(linha["source"])})
+                for linha in contas.mappings()
+            ),
+            grupos=tuple(GrupoLocal(**linha) for linha in grupos.mappings()),
+            associacoes=frozenset((linha.user_id, linha.group_id) for linha in associacoes),
+        )
+
+    async def add_synced_user(self, user: User, agora: datetime) -> None:
+        await self._session.execute(
+            insert(users).values(
+                id=user.id,
+                username=user.username,
+                display_name=user.display_name,
+                source=user.source.value,
+                email=user.email,
+                external_id=user.external_id,
+                is_active=True,
+                synced_at=agora,
+            )
+        )
+
+    async def update_synced_user(
+        self, user_id: UUID, *, display_name: str, email: str | None, agora: datetime
+    ) -> None:
+        await self._session.execute(
+            update(users)
+            .where(users.c.id == user_id)
+            .values(display_name=display_name, email=email, is_active=True, synced_at=agora)
+        )
+
+    async def deactivate_users(self, user_ids: set[UUID], agora: datetime) -> None:
+        if user_ids:
+            await self._session.execute(
+                update(users)
+                .where(users.c.id.in_(user_ids))
+                .values(is_active=False, synced_at=agora)
+            )
+
     async def get_run(self, run_id: UUID) -> SyncRun | None:
         consulta = select(directory_sync_runs).where(directory_sync_runs.c.id == run_id)
         linha = (await self._session.execute(consulta)).mappings().one_or_none()
         return None if linha is None else _execucao(linha)
+
+
+def _texto_ou_nulo(valor: UUID | None) -> str | None:
+    return None if valor is None else str(valor)
 
 
 def _execucao(linha: Any) -> SyncRun:
@@ -163,7 +241,9 @@ def _execucao(linha: Any) -> SyncRun:
         SyncConflict(
             tipo=c["tipo"],
             external_id=c["external_id"],
-            usuario_existente_id=UUID(c["usuario_existente_id"]),
+            usuario_existente_id=(
+                None if c["usuario_existente_id"] is None else UUID(c["usuario_existente_id"])
+            ),
         )
         for c in linha["conflicts"]
     )

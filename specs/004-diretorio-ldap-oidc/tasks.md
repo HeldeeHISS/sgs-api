@@ -109,7 +109,7 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
   - Bloqueada por: —
   - Requisitos: R1.5, R1.6, R1.7, R1.8, R4.2
   - Pronto quando: `tests/unit/identity/test_plano_sincronizacao.py` passa
-- [ ] T3. Caso de uso da sincronização
+- [x] T3. Caso de uso da sincronização
   - Frente: A
   - Faz:
     - leitura fora de transação e aplicação numa transação só;
@@ -120,6 +120,7 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
   - Bloqueada por: T1, T12, 003/T8
   - Requisitos: R1.5, R1.6, R1.7, R1.8, R1.9, R1.10, R4.2
   - Pronto quando: `tests/integration/identity/test_ldap_sync.py` passa
+  - Concluída em 25/11/2026 (`make check` verde). Prova: `tests/integration/identity/test_ldap_sync.py` (arquivo inteiro passa), em especial `::test_diretorio_fora_marca_falhou_sem_tocar_em_dado_local` e `::test_mudanca_de_grupo_recalcula_as_derivadas_da_003`. Notas: o conflito com outro usuário do mesmo retrato grava `usuario_existente_id = null`; entrada inválida no diretório falha a execução inteira (pergunta em aberto em `requirements.md`, 004/T3).
 - [ ] T5. Login por LDAP
   - Frente: A
   - Faz:

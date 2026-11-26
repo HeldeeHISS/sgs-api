@@ -18,6 +18,7 @@ from src.modules.identity.domain.espelho_diretorio import (
 from src.modules.identity.domain.login import EstadoDeLogin
 from src.modules.identity.domain.oidc import OidcLoginRequest
 from src.modules.identity.domain.sessions import AuthSession, RefreshToken
+from src.modules.identity.domain.sincronizacao import EstadoLocal
 from src.modules.identity.domain.users import User
 
 
@@ -134,6 +135,30 @@ class DirectoryRepository(Protocol):
         error: str | None = None,
     ) -> None:
         """Fecha a execução com as contagens, os conflitos e o erro genérico (R1.9, R1.10)."""
+        ...
+
+    async def fail_running_runs(self, error: str, agora: datetime) -> tuple[UUID, ...]:
+        """Fecha como `falhou` as execuções `em_andamento` e devolve os ids (design § Fluxo,
+        Sincronização, passo 6)."""
+        ...
+
+    async def local_state(self, source: OrigemDeGrupo) -> EstadoLocal:
+        """Todas as contas (de qualquer origem, para os conflitos), os grupos e as associações
+        da origem (R1.5 a R1.8, R4.2)."""
+        ...
+
+    async def add_synced_user(self, user: User, agora: datetime) -> None:
+        """Cria a conta do diretório, ativa e com `synced_at` (R1.5)."""
+        ...
+
+    async def update_synced_user(
+        self, user_id: UUID, *, display_name: str, email: str | None, agora: datetime
+    ) -> None:
+        """Atualiza nome e e-mail, ativa e grava `synced_at` (R1.6)."""
+        ...
+
+    async def deactivate_users(self, user_ids: set[UUID], agora: datetime) -> None:
+        """Desativa, sem apagar (R1.7)."""
         ...
 
     async def get_run(self, run_id: UUID) -> SyncRun | None: ...
