@@ -133,7 +133,7 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
   - Requisitos: R2.1, R2.2, R2.3, R2.4, R4.1, R4.3, R4.4
   - Pronto quando: `tests/integration/identity/test_ldap_login.py` passa
   - Concluída em 25/11/2026 (`make check` verde). Prova: `tests/integration/identity/test_ldap_login.py` (arquivo inteiro passa), em especial `::test_cinco_falhas_bloqueiam_e_o_bloqueio_vem_antes_do_bind`, `::test_conflito_de_email_recusa_sem_criar_conta` e `::test_2fa_do_usuario_ldap_abre_sessao_com_amr_ldap_otp`. Notas: sem LDAP_URL, `provider = "ldap"` responde 503, como a rota de sincronização; no login de conta existente, um e-mail novo que já é de outra conta mantém o antigo, como na sincronização; com o 2FA desligado em dev, o `amr` é `ldap`; o fim de `entrar` virou `desafiar_ou_abrir_sessao`, pública, para o login LDAP reusar.
-- [ ] T4. Rotas da sincronização, das execuções e dos grupos
+- [x] T4. Rotas da sincronização, das execuções e dos grupos
   - Frente: A
   - Faz:
     - `POST /admin/diretorio/sincronizar` (202, 409, 503);
@@ -144,6 +144,7 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
   - Bloqueada por: T3
   - Requisitos: R1.1, R1.9, R1.11, R1.14
   - Pronto quando: `tests/integration/identity/test_sync_routes.py` passa, com 401, 403 e 422
+  - Concluída em 26/11/2026 (`make check` verde). Prova: `tests/integration/identity/test_sync_routes.py` (arquivo inteiro passa, com 401, 403 e 422), em especial `::test_disparo_responde_202_e_a_execucao_fica_consultavel`, `::test_segunda_execucao_em_andamento_responde_409` e `::test_mapear_grupo_atribui_o_papel_aos_membros_ativos_de_user_groups`; `tests/integration/audit/test_cobertura_rotas.py` cobre a rota nova. Notas: o `SemMembrosDeGrupo` virou `SqlMembrosDeGrupo` (`access/infrastructure/repository.py`); a execução é gravada numa transação própria, confirmada antes do 202, e a rota usa `SessaoDeNegocio` só para o 409 virar `operacao.falhou`; a resposta de listagem segue `PaginaOut` (`itens`, `total`, `pagina`, `tamanho`). A pergunta da 004/T1 sobre `grupo_id` inexistente no mapeamento continua aberta (sai como erro interno).
 - [ ] T9. Agendamento da sincronização
   - Frente: A
   - Faz:

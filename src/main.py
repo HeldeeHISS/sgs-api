@@ -22,7 +22,7 @@ from src.core.security_headers import SecurityHeadersMiddleware
 from src.modules.access.api import rotas as acesso
 from src.modules.access.application.permissoes import ResolvedorDePermissoes
 from src.modules.access.infrastructure.repository import (
-    SemMembrosDeGrupo,
+    SqlMembrosDeGrupo,
     SqlRepositorioDeAtribuicoes,
     SqlRepositorioDeMapeamentos,
     SqlRepositorioDePermissoes,
@@ -33,7 +33,7 @@ from src.modules.audit.infrastructure.consultas import SqlConsultasDeAuditoria
 from src.modules.audit.infrastructure.repository import SqlAuditStore
 from src.modules.dashboard.api import rotas as dashboard
 from src.modules.dashboard.infrastructure.consultas import SqlConsultasDashboard
-from src.modules.identity.api import auth, jwks
+from src.modules.identity.api import auth, diretorio, jwks
 from src.modules.identity.api.sincronizacao import transacoes_da_sincronizacao
 from src.modules.identity.application.sincronizacao import marcar_interrompidas
 from src.modules.identity.infrastructure.directory_repository import SqlDirectoryRepository
@@ -122,9 +122,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # Spec 004: sem LDAP_URL, o LDAP fica desligado (login LDAP e sincronização respondem 503).
     ldap = LdapConfig.from_settings(settings)
     app.state.diretorio = None if ldap is None else Ldap3Directory(ldap)
-    # Membros dos grupos do diretório: sem `user_groups` até a 004/T1; a 004/T4 troca pela
-    # leitura real (003/T8, Perguntas em aberto).
-    app.state.membros_de_grupo = SemMembrosDeGrupo
+    # Membros dos grupos do diretório: `user_groups` com conta ativa (004/T4; 003/R3.1).
+    app.state.membros_de_grupo = SqlMembrosDeGrupo
     app.state.auditoria = SqlAuditStore
     app.state.consultas_auditoria = SqlConsultasDeAuditoria
     app.state.repositorio_de_unidades = SqlRepositorioDeUnidades
@@ -142,6 +141,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(relatorios_jwks.router)
     app.include_router(auth.router)
     app.include_router(acesso.router)
+    app.include_router(diretorio.router)
     app.include_router(unidades.router)
     app.include_router(vinculos.router)
     app.include_router(referencias.router)

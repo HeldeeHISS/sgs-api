@@ -8,12 +8,13 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import and_, delete, func, literal_column, select, text, update
+from sqlalchemy import ColumnElement, and_, delete, func, literal_column, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.ids import uuid7
 from src.modules.identity.domain.espelho_diretorio import (
+    GroupListing,
     OrigemDeGrupo,
     StatusDaExecucao,
     SyncConflict,
@@ -225,6 +226,54 @@ class SqlDirectoryRepository:
                 .where(users.c.id.in_(user_ids))
                 .values(is_active=False, synced_at=agora)
             )
+
+    async def list_runs(self, *, limit: int, offset: int) -> tuple[tuple[SyncRun, ...], int]:
+        total = await self._session.scalar(select(func.count()).select_from(directory_sync_runs))
+        consulta = (
+            select(directory_sync_runs)
+            .order_by(directory_sync_runs.c.started_at.desc(), directory_sync_runs.c.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        linhas = (await self._session.execute(consulta)).mappings()
+        return tuple(_execucao(linha) for linha in linhas), int(total or 0)
+
+    async def list_groups(
+        self,
+        *,
+        source: OrigemDeGrupo | None,
+        active: bool,
+        search: str | None,
+        limit: int,
+        offset: int,
+    ) -> tuple[tuple[GroupListing, ...], int]:
+        filtros: list[ColumnElement[bool]] = [groups.c.is_active.is_(active)]
+        if source is not None:
+            filtros.append(groups.c.source == source)
+        if search:
+            filtros.append(func.lower(groups.c.name).contains(search.lower(), autoescape=True))
+        total = await self._session.scalar(select(func.count()).select_from(groups).where(*filtros))
+        membros = (
+            select(func.count(users.c.id))
+            .select_from(user_groups.join(users, users.c.id == user_groups.c.user_id))
+            .where(user_groups.c.group_id == groups.c.id, users.c.is_active)
+            .scalar_subquery()
+        )
+        consulta = (
+            select(
+                groups.c.id,
+                groups.c.source,
+                groups.c.name,
+                groups.c.is_active,
+                membros.label("active_members"),
+            )
+            .where(*filtros)
+            .order_by(groups.c.name, groups.c.id)
+            .limit(limit)
+            .offset(offset)
+        )
+        linhas = (await self._session.execute(consulta)).mappings()
+        return tuple(GroupListing(**linha) for linha in linhas), int(total or 0)
 
     async def get_run(self, run_id: UUID) -> SyncRun | None:
         consulta = select(directory_sync_runs).where(directory_sync_runs.c.id == run_id)

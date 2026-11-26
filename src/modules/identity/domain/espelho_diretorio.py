@@ -21,6 +21,17 @@ class UpsertedGroup:
 
 
 @dataclass(frozen=True)
+class GroupListing:
+    """Grupo espelhado como o Admin TI o vê para mapear a um papel (R1.14)."""
+
+    id: UUID
+    source: OrigemDeGrupo
+    name: str
+    is_active: bool
+    active_members: int
+
+
+@dataclass(frozen=True)
 class SyncCounts:
     users_created: int = 0
     users_updated: int = 0

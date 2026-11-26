@@ -8,6 +8,7 @@ from typing import Protocol
 from uuid import UUID
 
 from src.modules.identity.domain.espelho_diretorio import (
+    GroupListing,
     OrigemDeGrupo,
     StatusDaExecucao,
     SyncConflict,
@@ -167,6 +168,22 @@ class DirectoryRepository(Protocol):
 
     async def deactivate_users(self, user_ids: set[UUID], agora: datetime) -> None:
         """Desativa, sem apagar (R1.7)."""
+        ...
+
+    async def list_runs(self, *, limit: int, offset: int) -> tuple[tuple[SyncRun, ...], int]:
+        """Uma página das execuções, da mais recente para a mais antiga, e o total (R1.9)."""
+        ...
+
+    async def list_groups(
+        self,
+        *,
+        source: OrigemDeGrupo | None,
+        active: bool,
+        search: str | None,
+        limit: int,
+        offset: int,
+    ) -> tuple[tuple[GroupListing, ...], int]:
+        """Uma página dos grupos, por nome, com os membros ativos, e o total (R1.14)."""
         ...
 
     async def get_run(self, run_id: UUID) -> SyncRun | None: ...

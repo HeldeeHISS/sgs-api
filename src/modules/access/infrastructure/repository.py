@@ -34,6 +34,9 @@ from src.modules.access.infrastructure.tables import (
 
 # Só a coluna de versão de `users` (spec 002); a tabela completa é da infraestrutura de identity.
 _users = table("users", column("id", Uuid), column("authz_version", Integer))
+# Tabelas do módulo identity (spec 004), só as colunas que a leitura dos membros usa.
+_users_ativos = table("users", column("id", Uuid), column("is_active", Boolean))
+_user_groups = table("user_groups", column("user_id", Uuid), column("group_id", Uuid))
 
 # Só o que liga a unidade aos escopos (spec 006, 0006): o distrito dela e a área técnica do seu
 # tipo. As tabelas completas são da infraestrutura do registry.
@@ -351,13 +354,19 @@ class SqlRepositorioDeMapeamentos:
         return [Atribuicao(**linha) for linha in resultado.mappings()]
 
 
-class SemMembrosDeGrupo:
-    """`MembrosDeGrupo` até a spec 004 criar `groups` e `user_groups` (004/T1): nenhum grupo tem
-    membros, então um mapeamento novo não atribui nada até a sincronização do diretório chamar o
-    recálculo (003/R3.2). A 004/T4 troca esta classe pela leitura de `user_groups`."""
+class SqlMembrosDeGrupo:
+    """`MembrosDeGrupo` sobre `user_groups` da spec 004 (004/T4): os membros do grupo com conta
+    ativa, de qualquer origem do grupo (003/R3.1)."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
     async def membros_ativos(self, grupo_id: UUID) -> frozenset[UUID]:
-        return frozenset()
+        consulta = (
+            select(_user_groups.c.user_id)
+            .select_from(
+                _user_groups.join(_users_ativos, _users_ativos.c.id == _user_groups.c.user_id)
+            )
+            .where(_user_groups.c.group_id == grupo_id, _users_ativos.c.is_active)
+        )
+        return frozenset((await self._session.scalars(consulta)).all())

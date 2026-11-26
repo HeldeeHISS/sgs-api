@@ -12,6 +12,7 @@ import httpx
 from fastapi import FastAPI
 from sqlalchemy import text
 
+from src.modules.identity.domain.diretorio import DirectorySnapshot
 from tests.integration.acesso import (
     GLOBAL,
     Sessoes,
@@ -34,6 +35,13 @@ def test_toda_rota_de_escrita_esta_mapeada(app: FastAPI) -> None:
     assert rotas - MAPA.keys() - EXCECOES.keys() == set(), "rota de escrita sem mapa"
     assert (MAPA.keys() | EXCECOES.keys()) - rotas == set(), "mapa com rota inexistente"
     assert not MAPA.keys() & EXCECOES.keys()
+
+
+class _DiretorioVazio:
+    """Diretório LDAP sem ninguém: a sincronização só fecha a execução (004/T4)."""
+
+    async def snapshot(self) -> DirectorySnapshot:
+        return DirectorySnapshot(users=(), groups=())
 
 
 async def _ultimo_id(sessoes: Sessoes) -> int:
@@ -206,6 +214,11 @@ async def test_rota_grava_evento_completo(
         lambda: cliente.delete(
             f"/api/v1/admin/mapeamentos-grupo/{ctx['mapeamento']}", headers=admin
         ),
+    )
+    app.state.diretorio = _DiretorioVazio()
+    passo(
+        "POST /api/v1/admin/diretorio/sincronizar",
+        lambda: cliente.post("/api/v1/admin/diretorio/sincronizar", headers=admin),
     )
     passo(
         "POST /api/v1/auth/login",

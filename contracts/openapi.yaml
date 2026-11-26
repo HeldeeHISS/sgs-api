@@ -843,6 +843,332 @@
         }
       }
     },
+    "/api/v1/admin/diretorio/sincronizar": {
+      "post": {
+        "tags": [
+          "diretório"
+        ],
+        "summary": "Disparar a sincronização do diretório LDAP",
+        "description": "R1.1, R1.11: 202 com o id; a execução segue em segundo plano e é consultada nas\nexecuções. Audita `diretorio.sincronizado` ao terminar, com quem disparou como ator.",
+        "operationId": "disparar_api_v1_admin_diretorio_sincronizar_post",
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecucaoIniciadaOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `diretorio:sync`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "409": {
+            "description": "Já há uma sincronização em andamento",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "503": {
+            "description": "LDAP não configurado",
+            "content": {
+              "application/problem+json": {}
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/diretorio/execucoes": {
+      "get": {
+        "tags": [
+          "diretório"
+        ],
+        "summary": "Execuções da sincronização",
+        "description": "R1.9: da mais recente para a mais antiga.",
+        "operationId": "execucoes_api_v1_admin_diretorio_execucoes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 1,
+              "description": "Página, a partir de 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Página, a partir de 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Itens por página (padrão 20, máximo 100).",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Itens por página (padrão 20, máximo 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaOut_ExecucaoOut_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `diretorio:sync`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/diretorio/execucoes/{id_}": {
+      "get": {
+        "tags": [
+          "diretório"
+        ],
+        "summary": "Uma execução da sincronização",
+        "description": "R1.9, R1.10, R4.2: contagens, conflitos e o erro genérico.",
+        "operationId": "execucao_api_v1_admin_diretorio_execucoes__id___get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id_",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id "
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecucaoOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `diretorio:sync`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "404": {
+            "description": "Execução inexistente",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/diretorio/grupos": {
+      "get": {
+        "tags": [
+          "diretório"
+        ],
+        "summary": "Grupos espelhados do diretório",
+        "description": "R1.14: id, origem, nome e membros com conta ativa, para o mapeamento da 003 (R3.1).",
+        "operationId": "grupos_api_v1_admin_diretorio_grupos_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "origem",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "ldap",
+                    "oidc"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origem"
+            }
+          },
+          {
+            "name": "ativo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Ativo"
+            }
+          },
+          {
+            "name": "busca",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Trecho do nome.",
+              "title": "Busca"
+            },
+            "description": "Trecho do nome."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 1,
+              "description": "Página, a partir de 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Página, a partir de 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Itens por página (padrão 20, máximo 100).",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Itens por página (padrão 20, máximo 100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaOut_GrupoOut_"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sem access token válido",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "403": {
+            "description": "Sem `papel:assign`",
+            "content": {
+              "application/problem+json": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/unidades": {
       "get": {
         "tags": [
@@ -4990,6 +5316,65 @@
         "title": "ConciliacaoOut",
         "description": "Linha da conciliação unidade x equipamento; o lado que faltar vem nulo. `distrito` é o\nnome do distrito da unidade e `equipamento_tipo`, o nome do tipo do equipamento."
       },
+      "ConflitoOut": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "email",
+              "username"
+            ],
+            "title": "Tipo"
+          },
+          "external_id": {
+            "type": "string",
+            "title": "External Id"
+          },
+          "usuario_existente_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usuario Existente Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "external_id",
+          "usuario_existente_id"
+        ],
+        "title": "ConflitoOut",
+        "description": "Sem e-mail nem nome: o Admin TI chega à conta pelo id (LGPD)."
+      },
+      "ContagensOut": {
+        "properties": {
+          "criados": {
+            "type": "integer",
+            "title": "Criados"
+          },
+          "atualizados": {
+            "type": "integer",
+            "title": "Atualizados"
+          },
+          "desativados": {
+            "type": "integer",
+            "title": "Desativados"
+          }
+        },
+        "type": "object",
+        "required": [
+          "criados",
+          "atualizados",
+          "desativados"
+        ],
+        "title": "ContagensOut"
+      },
       "DesativacaoIn": {
         "properties": {
           "motivo": {
@@ -5675,6 +6060,154 @@
         "title": "EventoOut",
         "description": "Um evento da trilha (008/R1.2, R2.1)."
       },
+      "ExecucaoIniciadaOut": {
+        "properties": {
+          "execucao_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Execucao Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "em_andamento",
+            "title": "Status",
+            "default": "em_andamento"
+          }
+        },
+        "type": "object",
+        "required": [
+          "execucao_id"
+        ],
+        "title": "ExecucaoIniciadaOut"
+      },
+      "ExecucaoOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "tipo": {
+            "type": "string",
+            "const": "ldap",
+            "title": "Tipo"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "em_andamento",
+              "concluida",
+              "falhou"
+            ],
+            "title": "Status"
+          },
+          "iniciada_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Iniciada Em"
+          },
+          "concluida_em": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Concluida Em"
+          },
+          "disparada_por": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disparada Por"
+          },
+          "usuarios": {
+            "$ref": "#/components/schemas/ContagensOut"
+          },
+          "grupos": {
+            "$ref": "#/components/schemas/ContagensOut"
+          },
+          "conflitos": {
+            "items": {
+              "$ref": "#/components/schemas/ConflitoOut"
+            },
+            "type": "array",
+            "title": "Conflitos"
+          },
+          "erro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Erro"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tipo",
+          "status",
+          "iniciada_em",
+          "concluida_em",
+          "disparada_por",
+          "usuarios",
+          "grupos",
+          "conflitos",
+          "erro"
+        ],
+        "title": "ExecucaoOut"
+      },
+      "GrupoOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "origem": {
+            "type": "string",
+            "enum": [
+              "ldap",
+              "oidc"
+            ],
+            "title": "Origem"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "membros_ativos": {
+            "type": "integer",
+            "title": "Membros Ativos"
+          },
+          "ativo": {
+            "type": "boolean",
+            "title": "Ativo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "origem",
+          "nome",
+          "membros_ativos",
+          "ativo"
+        ],
+        "title": "GrupoOut"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -6308,6 +6841,68 @@
           "tamanho"
         ],
         "title": "PaginaOut[EventoOut]"
+      },
+      "PaginaOut_ExecucaoOut_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ExecucaoOut"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho"
+        ],
+        "title": "PaginaOut[ExecucaoOut]"
+      },
+      "PaginaOut_GrupoOut_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/GrupoOut"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina"
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho"
+        ],
+        "title": "PaginaOut[GrupoOut]"
       },
       "PaginaOut_InventarioOut_": {
         "properties": {
