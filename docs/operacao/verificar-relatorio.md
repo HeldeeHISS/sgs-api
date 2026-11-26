@@ -64,11 +64,11 @@ if dados["kid"] not in chaves:
     sys.exit(f"a chave {dados['kid']} não está no JWKS")
 
 jwk = chaves[dados["kid"]]
-publica = ec.EllipticCurvePublicNumbers(
-    int.from_bytes(base64url(jwk["x"])), int.from_bytes(base64url(jwk["y"])), ec.SECP256R1()
-).public_key()
+x = int.from_bytes(base64url(jwk["x"]), "big")
+y = int.from_bytes(base64url(jwk["y"]), "big")
+publica = ec.EllipticCurvePublicNumbers(x, y, ec.SECP256R1()).public_key()
 r_s = base64url(dados["assinatura"])
-der = encode_dss_signature(int.from_bytes(r_s[:32]), int.from_bytes(r_s[32:]))
+der = encode_dss_signature(int.from_bytes(r_s[:32], "big"), int.from_bytes(r_s[32:], "big"))
 try:
     publica.verify(der, conteudo, ec.ECDSA(hashes.SHA256()))
 except InvalidSignature:
@@ -130,6 +130,7 @@ mkdir -p secrets
 uv run python -m src.tools.jwt_keys --kid rel-$(date +%F) --output secrets/report-keys.json
 ```
 
+- **Só na primeira vez.** O comando sobrescreve o arquivo e apaga as chaves anteriores, que ainda conferem os relatórios assinados antes (R5.5). Com o arquivo já criado, siga a [rotação](#rotação-r55).
 - **Formato.** É o mesmo das chaves JWT, sem ferramenta nova: lista JSON de `{kid, pem}` EC P-256, em que a primeira chave assina e todas são publicadas.
 - **Chave própria.** A chave e o `kid` têm de ser outros. O prefixo `rel-` evita o `kid` de data que as chaves JWT usam por padrão, e a API recusa iniciar se houver coincidência (R5.2).
 - **Leitura.** A API lê `REPORT_SIGNING_KEYS_FILE` (caminho do arquivo montado) ou `REPORT_SIGNING_KEYS` (o JSON), só uma das duas.
@@ -138,17 +139,18 @@ uv run python -m src.tools.jwt_keys --kid rel-$(date +%F) --output secrets/repor
 - **Segredo.** O arquivo é segredo: fica em `secrets/`, fora do Git, e nunca vai para log.
 
 ## Rotação (R5.5)
-1. Gere a chave nova num arquivo à parte:
+1. Gere a chave nova num arquivo à parte, em `secrets/`, fora do Git (ele também tem chave privada):
 
    ```bash
-   uv run python -m src.tools.jwt_keys --kid rel-$(date +%F) --output nova.json
+   uv run python -m src.tools.jwt_keys --kid rel-$(date +%F) --output secrets/report-keys.nova.json
    ```
 
-2. Ponha a chave nova no início da lista e mantenha as antigas:
+2. Ponha a chave nova no início da lista e mantenha as antigas. Cada comando só roda se o anterior deu certo: se o `jq` falhar, o arquivo de chaves fica como estava.
 
    ```bash
-   jq -s '.[0] + .[1]' nova.json secrets/report-keys.json > report-keys.novo.json
-   mv report-keys.novo.json secrets/report-keys.json && rm nova.json
+   jq -s '.[0] + .[1]' secrets/report-keys.nova.json secrets/report-keys.json > secrets/report-keys.junta.json &&
+     mv secrets/report-keys.junta.json secrets/report-keys.json &&
+     rm secrets/report-keys.nova.json
    ```
 
 3. Reinicie a API. Os relatórios novos saem com o `kid` novo. Os antigos continuam conferíveis, porque as chaves antigas seguem publicadas.

@@ -172,6 +172,27 @@ def test_recusa_chaves_de_relatorio_na_variavel_e_no_arquivo(tmp_path: Path) -> 
     assert "REPORT_SIGNING_KEYS_FILE: defina" in mensagem
 
 
+@pytest.mark.parametrize("vazio", ["", "   "], ids=["vazia", "so_espacos"])
+def test_variavel_de_chave_de_relatorio_vazia_vale_como_nao_definida(
+    tmp_path: Path, vazio: str
+) -> None:
+    """005/R5.1 (design § Configuração: sem chave, nada é assinado; `REPORT_SIGNING_KEYS=` num
+    arquivo de ambiente não impede a subida)"""
+    sem_chave = make_settings(report_signing_keys=vazio, report_signing_keys_file=vazio)
+    assert sem_chave.chaves_de_relatorio == ()
+    assert Es256AssinadorDeRelatorio.from_settings(sem_chave) is None
+
+    arquivo = tmp_path / "report-keys.json"
+    arquivo.write_text(make_jwt_private_keys("rel-arquivo"), encoding="utf-8")
+    do_arquivo = make_settings(report_signing_keys=vazio, report_signing_keys_file=str(arquivo))
+    assert [chave.kid for chave in do_arquivo.chaves_de_relatorio] == ["rel-arquivo"]
+
+    da_variavel = make_settings(
+        report_signing_keys=make_jwt_private_keys("rel-variavel"), report_signing_keys_file=vazio
+    )
+    assert [chave.kid for chave in da_variavel.chaves_de_relatorio] == ["rel-variavel"]
+
+
 def test_chave_de_relatorio_ilegivel_recusa_a_subida_sem_expor_o_valor() -> None:
     """005/R5.1 (mesmo leitor das chaves JWT: erro pela posição e pelo kid, nunca pelo PEM)"""
     publica = make_pem_privado().replace("PRIVATE", "PUBLIC")

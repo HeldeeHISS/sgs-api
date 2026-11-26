@@ -25,6 +25,7 @@ from pydantic import (
     SecretBytes,
     SecretStr,
     ValidationError,
+    ValidationInfo,
     field_validator,
     model_validator,
 )
@@ -218,12 +219,16 @@ class Settings(BaseSettings):
 
     @field_validator("jwt_private_keys", "report_signing_keys", mode="before")
     @classmethod
-    def _parse_jwt_keys(cls, value: object) -> object:
+    def _parse_jwt_keys(cls, value: object, info: ValidationInfo) -> object:
+        if _is_blank_optional_keys(value, info):
+            return ()
         return _parse_jwt_keys(value) if isinstance(value, str) else value
 
     @field_validator("jwt_private_keys_file", "report_signing_keys_file", mode="before")
     @classmethod
-    def _read_jwt_keys_file(cls, value: object) -> object:
+    def _read_jwt_keys_file(cls, value: object, info: ValidationInfo) -> object:
+        if _is_blank_optional_keys(value, info):
+            return ()
         if not isinstance(value, str | Path):
             return value
         try:
@@ -474,6 +479,16 @@ def _parse_jwt_keys(raw: str) -> tuple[JwtSigningKey, ...]:
             raise _jwt_keys_error(f"kid repetido: {key.kid}")
         keys.append(key)
     return tuple(keys)
+
+
+# As chaves de relatório são opcionais (sem chave, nada é assinado): `REPORT_SIGNING_KEYS=` num
+# arquivo de ambiente vale como não definida, como em `_oidc_empty_is_unset`. As chaves JWT são
+# obrigatórias, e a variável vazia continua recusada pelo leitor.
+_OPTIONAL_KEY_FIELDS = frozenset({"report_signing_keys", "report_signing_keys_file"})
+
+
+def _is_blank_optional_keys(value: object, info: ValidationInfo) -> bool:
+    return info.field_name in _OPTIONAL_KEY_FIELDS and isinstance(value, str) and not value.strip()
 
 
 def _jwt_keys_error(detail: str) -> PydanticCustomError:
