@@ -5,6 +5,7 @@ Sem rede: o provedor é falso, servido por `httpx.MockTransport`, e as chaves do
 `id_token` são gerados no próprio teste.
 """
 
+import asyncio
 import base64
 import hashlib
 import hmac
@@ -39,6 +40,7 @@ RETORNO = "https://sgs.teste/api/v1/auth/oidc/callback"
 NONCE = "nonce-do-pedido-de-login"
 SUB = "6f1c2a9e-0d4b-4c55-9a3e-2f5b8c7d1e20"
 AUSENTE = object()
+JSON = {"Content-Type": "application/json"}
 
 
 @cache
@@ -129,11 +131,21 @@ class ProvedorFalso:
         self.emissor = emissor
         self.descoberta = descoberta
         self.id_token: str | None = None
+        self.descoberta_extra: dict[str, Any] = {}  # campos trocados no documento de descoberta
+        self.token_extra: dict[str, Any] = {}  # campos a mais na resposta do token endpoint
         self.resposta_do_token: Callable[[httpx.Request], httpx.Response] | None = None
+        # Resposta trocada por endereço (descoberta, JWKS ou token endpoint).
+        self.respostas: dict[str, Callable[[httpx.Request], httpx.Response]] = {}
+        self.atraso_do_jwks = 0.0  # segundos até o JWKS responder
         self.pedidos: list[httpx.Request] = []
 
     def transporte(self) -> httpx.MockTransport:
-        return httpx.MockTransport(self._responder)
+        return httpx.MockTransport(self._responder_com_atraso)
+
+    async def _responder_com_atraso(self, pedido: httpx.Request) -> httpx.Response:
+        if self.atraso_do_jwks and str(pedido.url.copy_with(query=None)) == JWKS:
+            await asyncio.sleep(self.atraso_do_jwks)
+        return self._responder(pedido)
 
     def pedidos_a(self, endereco: str) -> list[httpx.Request]:
         return [p for p in self.pedidos if str(p.url.copy_with(query=None)) == endereco]
@@ -141,6 +153,8 @@ class ProvedorFalso:
     def _responder(self, pedido: httpx.Request) -> httpx.Response:
         self.pedidos.append(pedido)
         endereco = str(pedido.url.copy_with(query=None))
+        if endereco in self.respostas:
+            return self.respostas[endereco](pedido)
         if endereco == self.descoberta:
             return httpx.Response(
                 200,
@@ -149,7 +163,8 @@ class ProvedorFalso:
                     "authorization_endpoint": AUTORIZACAO,
                     "token_endpoint": TROCA,
                     "jwks_uri": JWKS,
-                },
+                }
+                | self.descoberta_extra,
             )
         if endereco == JWKS:
             chaves = [chave.jwk() for chave in self.chaves] + self.jwks_extra
@@ -158,7 +173,9 @@ class ProvedorFalso:
             if self.resposta_do_token is not None:
                 return self.resposta_do_token(pedido)
             corpo = {"access_token": "opaco", "token_type": "Bearer", "id_token": self.id_token}
-            return httpx.Response(200, json=corpo)
+            # `json.dumps` aceita NaN e infinito, como um provedor fora do padrão mandaria.
+            conteudo = json.dumps(corpo | self.token_extra).encode()
+            return httpx.Response(200, content=conteudo, headers=JSON)
         return httpx.Response(404)
 
 
@@ -386,6 +403,54 @@ async def test_claims_fora_do_formato_sao_recusadas(mudancas: dict[str, object])
     )
 
 
+@pytest.mark.parametrize(
+    "grupos",
+    [[""], ["/sgs/gestores", "   "], ["g" * 256]],
+    ids=["grupo_vazio", "grupo_so_com_espacos", "grupo_com_256_caracteres"],
+)
+async def test_grupo_vazio_ou_longo_demais_e_recusado(grupos: list[str]) -> None:
+    """004/R3.2, R3.3 (motivo `claims`: cada grupo vira `external_id` e nome do grupo espelhado,
+    com até 255 caracteres; design § Fluxo, Login OIDC, passo 4)"""
+    chave = _chave_rsa()
+    provedor = ProvedorFalso(chave)
+
+    assert (
+        await _motivo_da_recusa(
+            _adaptador(provedor), provedor, chave.assinar(_claims(groups=grupos))
+        )
+        == "claims"
+    )
+
+
+async def test_grupo_com_255_caracteres_e_aceito() -> None:
+    """004/R3.3 (o limite do nome do grupo espelhado é 255 caracteres)"""
+    chave = _chave_rsa()
+    provedor = ProvedorFalso(chave)
+
+    identidade = await _trocar(
+        _adaptador(provedor), provedor, chave.assinar(_claims(groups=["g" * 255]))
+    )
+
+    assert identidade.groups == ("g" * 255,)
+
+
+@pytest.mark.parametrize(
+    "email",
+    ["m" * 243 + "@example.org", "maria.silva", "maria@localhost", "maria silva@example.org"],
+    ids=["com_255_caracteres", "sem_arroba", "sem_dominio_de_topo", "com_espaco"],
+)
+async def test_email_que_a_conta_nao_aceita_fica_de_fora(email: str) -> None:
+    """004/R3.2, R3.3 (e-mail verificado que `User` recusaria vira ausência de e-mail, sem
+    recusar o login nem quebrar o provisionamento)"""
+    chave = _chave_rsa()
+    provedor = ProvedorFalso(chave)
+
+    identidade = await _trocar(_adaptador(provedor), provedor, chave.assinar(_claims(email=email)))
+
+    assert identidade.email is None
+    assert identidade.username == "maria.silva"
+
+
 async def test_alg_none_e_hs256_sao_recusados_mesmo_com_kid_publicado() -> None:
     """004/R3.2 (algoritmos fixos RS256 e ES256: nunca `none` nem `HS*`, nem a confusão de
     algoritmo com a chave pública RSA usada como segredo HMAC)"""
@@ -440,6 +505,52 @@ async def test_kid_desconhecido_recarrega_o_jwks_no_maximo_uma_vez_por_minuto() 
     assert len(provedor.pedidos_a(JWKS)) == 3
 
 
+async def test_trocas_simultaneas_durante_a_carga_do_jwks_conferem_com_a_mesma_carga() -> None:
+    """004/R3.2 (a troca que chega enquanto outra carrega o JWKS espera essa carga, em vez de
+    recusar um `id_token` válido por `assinatura`; a recarga continua no máximo uma por minuto)"""
+    chave = _chave_rsa()
+    provedor = ProvedorFalso(chave)
+    provedor.atraso_do_jwks = 0.2  # a primeira troca ainda espera o JWKS quando a segunda chega
+    relogio = Relogio()
+    adaptador = _adaptador(provedor, relogio=relogio)
+
+    async def trocar(id_token: str) -> OidcIdentity:
+        provedor.id_token = id_token
+        return await adaptador.exchange("codigo", code_verifier="v" * 64, nonce=NONCE)
+
+    identidades = await asyncio.gather(*(trocar(chave.assinar(_claims())) for _ in range(2)))
+
+    assert [identidade.sub for identidade in identidades] == [SUB, SUB]
+    assert len(provedor.pedidos_a(JWKS)) == 1
+
+    # Um `kid` desconhecido em trocas simultâneas também recarrega uma vez só.
+    relogio.agora += 61
+    desconhecido = _chave_rsa("sem-chave").assinar(_claims())
+    recusas = await asyncio.gather(
+        *(trocar(desconhecido) for _ in range(2)), return_exceptions=True
+    )
+
+    assert [getattr(recusa, "motivo", recusa) for recusa in recusas] == ["assinatura"] * 2
+    assert len(provedor.pedidos_a(JWKS)) == 2
+
+
+async def test_jwks_fora_do_ar_e_recusado_como_troca_sem_esperar_um_minuto() -> None:
+    """004/R3.2, R3.5 (provedor fora do ar é motivo `troca` na auditoria, nunca `assinatura`;
+    a busca que falhou não conta como recarga, e o login volta assim que o provedor volta)"""
+    chave = _chave_rsa()
+    provedor = ProvedorFalso(chave)
+    provedor.respostas[JWKS] = lambda _: httpx.Response(503, text="fora do ar")
+    adaptador = _adaptador(provedor, relogio=Relogio())  # o relógio não anda neste teste
+    id_token = chave.assinar(_claims())
+
+    assert await _motivo_da_recusa(adaptador, provedor, id_token) == "troca"
+    assert await _motivo_da_recusa(adaptador, provedor, id_token) == "troca"
+
+    del provedor.respostas[JWKS]
+    assert (await _trocar(adaptador, provedor, id_token)).sub == SUB
+    assert len(provedor.pedidos_a(JWKS)) == 3
+
+
 async def test_acr_fora_dos_exigidos_e_recusado() -> None:
     """004/R3.6 (com OIDC_REQUIRED_ACR, `acr` ausente ou fora da lista é recusado)"""
     chave = _chave_rsa()
@@ -489,6 +600,73 @@ async def test_falha_na_troca_do_codigo_e_recusada_com_motivo_troca(
     chave = _chave_rsa()
     provedor = ProvedorFalso(chave)
     provedor.resposta_do_token = resposta
+
+    assert await _motivo_da_recusa(_adaptador(provedor), provedor, chave.assinar(_claims())) == (
+        "troca"
+    )
+
+
+ENDERECOS_INVALIDOS = {
+    "ipv6_sem_colchete": "https://[::1/certs",
+    "porta_fora_da_faixa": "https://idp.teste:99999/certs",
+    "controle_no_host": "https://idp\x00.teste/certs",
+    "controle_no_caminho": "https://idp.teste/\x7fcerts",
+}
+
+
+@pytest.mark.parametrize("campo", ["authorization_endpoint", "token_endpoint", "jwks_uri"])
+@pytest.mark.parametrize("endereco", ENDERECOS_INVALIDOS.values(), ids=ENDERECOS_INVALIDOS.keys())
+async def test_descoberta_com_endereco_invalido_nao_usa_o_provedor(
+    campo: str, endereco: str
+) -> None:
+    """004/R3.2, R3.5 (endereço da descoberta que não é um `https://` válido: 503 no início do
+    login e motivo `troca` no callback, sem exceção crua)"""
+    chave = _chave_rsa()
+    provedor = ProvedorFalso(chave)
+    provedor.descoberta_extra = {campo: endereco}
+    adaptador = _adaptador(provedor)
+
+    with pytest.raises(ServiceUnavailable):
+        await adaptador.authorization_url(state="e", nonce=NONCE, code_challenge="d")
+    assert await _motivo_da_recusa(adaptador, provedor, chave.assinar(_claims())) == "troca"
+    assert provedor.pedidos_a(TROCA) == []
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"expires_in": ["300"]},
+        {"expires_in": {"segundos": 300}},
+        {"expires_in": float("inf")},
+        {"expires_at": [1]},
+    ],
+    ids=["expires_in_lista", "expires_in_objeto", "expires_in_infinito", "expires_at_lista"],
+)
+async def test_resposta_do_token_fora_do_padrao_e_recusada_com_motivo_troca(
+    extra: dict[str, object],
+) -> None:
+    """004/R3.2, R3.5 (a Authlib levanta `TypeError` ou `OverflowError` com um `expires_in`
+    estranho: é falha da troca, motivo `troca`)"""
+    chave = _chave_rsa()
+    provedor = ProvedorFalso(chave)
+    provedor.token_extra = extra
+
+    assert await _motivo_da_recusa(_adaptador(provedor), provedor, chave.assinar(_claims())) == (
+        "troca"
+    )
+
+
+def _json_aninhado_demais(_: httpx.Request) -> httpx.Response:
+    return httpx.Response(200, content=b"[" * 100_000 + b"]" * 100_000, headers=JSON)
+
+
+@pytest.mark.parametrize("endereco", [DESCOBERTA, TROCA, JWKS], ids=["descoberta", "token", "jwks"])
+async def test_json_aninhado_demais_do_provedor_e_recusado_com_motivo_troca(endereco: str) -> None:
+    """004/R3.2, R3.5 (resposta que o `json` não consegue ler, por `RecursionError`, é falha do
+    provedor, motivo `troca`)"""
+    chave = _chave_rsa()
+    provedor = ProvedorFalso(chave)
+    provedor.respostas[endereco] = _json_aninhado_demais
 
     assert await _motivo_da_recusa(_adaptador(provedor), provedor, chave.assinar(_claims())) == (
         "troca"

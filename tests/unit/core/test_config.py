@@ -2,6 +2,7 @@
 
 import base64
 import json
+import re
 from collections.abc import Callable
 from pathlib import Path
 
@@ -463,3 +464,151 @@ def test_segredo_oidc_de_exemplo_vale_fora_de_prod(ambiente: DefinirAmbiente) ->
 
     assert segredo is not None
     assert segredo.get_secret_value() == "sgs-lab-exemplo-oidc"
+
+
+@pytest.mark.parametrize(
+    ("variavel", "valor"),
+    [
+        ("OIDC_ISSUER", "https://keycloak.localhost/realms/sgs?tenant=1"),
+        ("OIDC_ISSUER", "https://keycloak.localhost/realms/sgs#inicio"),
+        ("OIDC_ISSUER", "https://keycloak.localhost/realms/sgs?"),
+        (
+            "OIDC_REDIRECT_URI",
+            "https://localhost/api/v1/auth/oidc/callback?volta=https://x.example",
+        ),
+        ("OIDC_REDIRECT_URI", "https://localhost/api/v1/auth/oidc/callback#inicio"),
+    ],
+)
+def test_oidc_recusa_query_ou_fragmento_no_emissor_e_no_retorno(
+    ambiente: DefinirAmbiente, variavel: str, valor: str
+) -> None:
+    """004/R3.2, R3.8 (o `iss` é comparado byte a byte e dá a descoberta padrão; o retorno é
+    fixo, registrado no provedor)"""
+    ambiente({**VARIAVEIS_DEV, **VARIAVEIS_OIDC, variavel: valor})
+
+    with pytest.raises(SettingsError, match=f"{variavel}: não use query nem fragmento"):
+        load_settings()
+
+
+def test_oidc_ca_file_so_e_conferido_com_o_oidc_ligado(
+    ambiente: DefinirAmbiente, tmp_path: Path
+) -> None:
+    """004/R3.2 (design § Configuração: sem OIDC_ISSUER, as demais variáveis OIDC não são
+    conferidas; com ela, OIDC_CA_FILE tem de ser um arquivo existente)"""
+    ambiente({**VARIAVEIS_DEV, "OIDC_CA_FILE": "/nao/existe/ca.crt"})
+    assert load_settings().oidc_issuer is None
+
+    ambiente({**VARIAVEIS_OIDC, "OIDC_CA_FILE": str(tmp_path)})  # pasta, não arquivo
+    with pytest.raises(SettingsError, match="OIDC_CA_FILE: arquivo não encontrado"):
+        load_settings()
+
+    ca = tmp_path / "ca.crt"
+    ca.write_text("certificado de teste\n", encoding="utf-8")
+    ambiente({"OIDC_CA_FILE": str(ca)})
+    assert load_settings().oidc_ca_file == ca
+
+
+@pytest.mark.parametrize("valor", ["", "   "], ids=["vazia", "so_espacos"])
+def test_oidc_recusa_claim_de_grupos_vazia(ambiente: DefinirAmbiente, valor: str) -> None:
+    """004/R3.3 (os grupos vêm da claim OIDC_GROUPS_CLAIM; vazia, todos sumiriam calados)"""
+    ambiente({**VARIAVEIS_DEV, "OIDC_GROUPS_CLAIM": valor})
+    assert load_settings().oidc_issuer is None  # com o OIDC desligado, não é conferida
+
+    ambiente(VARIAVEIS_OIDC)
+    with pytest.raises(SettingsError, match="OIDC_GROUPS_CLAIM: informe o nome da claim"):
+        load_settings()
+
+
+@pytest.mark.parametrize(
+    "frontend_url",
+    [
+        "https://LOCALHOST/",
+        "HTTPS://localhost/",
+        "https://localhost:443/",
+        "https://Localhost:443/",
+    ],
+)
+def test_oidc_compara_a_origem_de_frontend_url_como_o_navegador_a_manda(
+    ambiente: DefinirAmbiente, frontend_url: str
+) -> None:
+    """004/R3.8, R3.9 (o navegador manda a origem com esquema e host em minúsculas e sem a
+    porta 443; é ela que o refresh procura, texto a texto, em CORS_ORIGINS)"""
+    ambiente({**VARIAVEIS_DEV, **VARIAVEIS_OIDC, "FRONTEND_URL": frontend_url})
+
+    assert load_settings().frontend_url == frontend_url
+
+
+def test_oidc_recusa_cors_origins_que_o_navegador_nunca_manda(ambiente: DefinirAmbiente) -> None:
+    """004/R3.8, R3.9 (com a porta 443 explícita nos dois lados, o navegador manda
+    `https://localhost`, que não está em CORS_ORIGINS: o refresh falharia depois do login)"""
+    ambiente(
+        {
+            **VARIAVEIS_DEV,
+            **VARIAVEIS_OIDC,
+            "OIDC_REDIRECT_URI": "https://localhost:443/api/v1/auth/oidc/callback",
+            "FRONTEND_URL": "https://localhost:443/",
+            "CORS_ORIGINS": "https://localhost:443",
+        }
+    )
+
+    with pytest.raises(
+        SettingsError,
+        match=r"FRONTEND_URL: a origem https://localhost precisa estar em CORS_ORIGINS",
+    ):
+        load_settings()
+
+
+@pytest.mark.parametrize(
+    ("retorno", "origem"),
+    [
+        ("https://api.sgs.example/api/v1/auth/oidc/callback", "https://sgs.example"),
+        ("https://sgs.example:8443/api/v1/auth/oidc/callback", "https://sgs.example"),
+    ],
+    ids=["outro_host", "outra_porta"],
+)
+def test_oidc_recusa_retorno_fora_da_origem_de_frontend_url(
+    ambiente: DefinirAmbiente, retorno: str, origem: str
+) -> None:
+    """004/R3.8"""
+    ambiente(
+        {
+            **VARIAVEIS_DEV,
+            **VARIAVEIS_OIDC,
+            "OIDC_REDIRECT_URI": retorno,
+            "FRONTEND_URL": "https://sgs.example/",
+            "CORS_ORIGINS": "https://sgs.example",
+        }
+    )
+
+    with pytest.raises(
+        SettingsError,
+        match=rf"OIDC_REDIRECT_URI: use a mesma origem de FRONTEND_URL \({re.escape(origem)}\)",
+    ):
+        load_settings()
+
+
+@pytest.mark.parametrize(
+    ("retorno", "frontend_url"),
+    [
+        ("https://SGS.Example:443/api/v1/auth/oidc/callback", "https://sgs.example/"),
+        ("https://sgs.example/api/v1/auth/oidc/callback", "HTTPS://sgs.EXAMPLE:443/"),
+        ("https://sgs.example:8443/api/v1/auth/oidc/callback", "https://SGS.example:8443/"),
+    ],
+    ids=["retorno_com_maiusculas_e_443", "frontend_com_maiusculas_e_443", "porta_8443"],
+)
+def test_oidc_aceita_retorno_na_mesma_origem_escrita_de_outro_jeito(
+    ambiente: DefinirAmbiente, retorno: str, frontend_url: str
+) -> None:
+    """004/R3.8"""
+    origem = "https://sgs.example:8443" if "8443" in retorno else "https://sgs.example"
+    ambiente(
+        {
+            **VARIAVEIS_DEV,
+            **VARIAVEIS_OIDC,
+            "OIDC_REDIRECT_URI": retorno,
+            "FRONTEND_URL": frontend_url,
+            "CORS_ORIGINS": origem,
+        }
+    )
+
+    assert load_settings().oidc_redirect_uri == retorno

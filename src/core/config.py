@@ -126,7 +126,7 @@ class Settings(BaseSettings):
     # variáveis OIDC não são conferidas; com ela, `_oidc_problems` confere todas.
     oidc_issuer: str | None = None
     oidc_discovery_url: str | None = None
-    oidc_ca_file: FilePath | None = None
+    oidc_ca_file: Path | None = None  # conferida em `_oidc_problems`, só com o OIDC ligado
     oidc_client_id: str | None = None
     oidc_client_secret: SecretStr | None = None
     oidc_redirect_uri: str | None = None
@@ -337,13 +337,27 @@ class Settings(BaseSettings):
             "FRONTEND_URL": self.frontend_url,
         }
         for name, url in urls.items():
-            if url is not None and not _is_https_url(url):
+            if url is not None and not is_https_url(url):
                 problems.append(f"{name}: use um endereço https://")
-        redirect = self.oidc_redirect_uri
-        if redirect and _is_https_url(redirect) and urlsplit(redirect).path != OIDC_CALLBACK_PATH:
+        # O `iss` é comparado byte a byte e dá a descoberta padrão; o retorno é o registrado.
+        fixed = {"OIDC_ISSUER": self.oidc_issuer, "OIDC_REDIRECT_URI": self.oidc_redirect_uri}
+        for name, url in fixed.items():
+            if url is not None and ("?" in url or "#" in url):
+                problems.append(f"{name}: não use query nem fragmento")
+        if self.oidc_ca_file is not None and not self.oidc_ca_file.is_file():
+            problems.append("OIDC_CA_FILE: arquivo não encontrado")
+        if not self.oidc_groups_claim.strip():
+            problems.append("OIDC_GROUPS_CLAIM: informe o nome da claim de grupos do id_token")
+        redirect, frontend = self.oidc_redirect_uri, self.frontend_url
+        if redirect and is_https_url(redirect) and urlsplit(redirect).path != OIDC_CALLBACK_PATH:
             problems.append(f"OIDC_REDIRECT_URI: o caminho tem de ser {OIDC_CALLBACK_PATH}")
-        if self.frontend_url and _is_https_url(self.frontend_url):
-            problems.extend(self._frontend_problems(self.frontend_url))
+        if frontend and is_https_url(frontend):
+            problems.extend(self._frontend_problems(frontend))
+            # O link de login é relativo, e os cookies `sgs_oidc` e de refresh valem só no host
+            # que os gravou: o callback e o front têm de estar na mesma origem.
+            origin = _browser_origin(frontend)
+            if redirect and is_https_url(redirect) and _browser_origin(redirect) != origin:
+                problems.append(f"OIDC_REDIRECT_URI: use a mesma origem de FRONTEND_URL ({origin})")
         secret = self.oidc_client_secret
         if (
             self.app_env is AppEnv.PROD
@@ -357,9 +371,10 @@ class Settings(BaseSettings):
         """Destino do retorno OIDC: fixo, sem query nem fragmento (sem redirecionamento aberto)."""
         if not url.endswith("/") or "?" in url or "#" in url:
             return ["FRONTEND_URL: termine em / e não use query nem fragmento"]
-        origin = f"https://{urlsplit(url).netloc}"
+        origin = _browser_origin(url)
         if origin not in self.cors_origins:
-            # O front renova a sessão dali, e o refresh confere a origem em CORS_ORIGINS.
+            # O front renova a sessão dali, e o refresh procura o `Origin` que o navegador manda,
+            # texto a texto, em CORS_ORIGINS. Por isso só este lado é normalizado.
             return [f"FRONTEND_URL: a origem {origin} precisa estar em CORS_ORIGINS"]
         return []
 
@@ -485,13 +500,26 @@ def _is_origin(origin: str) -> bool:
     )
 
 
-def _is_https_url(url: str) -> bool:
+def is_https_url(url: str) -> bool:
+    """`https://` com host e sem credenciais; vale também para os endereços da descoberta OIDC
+    (`identity/infrastructure/authlib_oidc.py`)."""
     try:
         parts = urlsplit(url)
         _ = parts.port  # porta inválida levanta ValueError
     except ValueError:
         return False
     return parts.scheme == "https" and bool(parts.hostname) and parts.username is None
+
+
+def _browser_origin(url: str) -> str:
+    """Origem de um endereço https:// como o navegador a manda no `Origin` (RFC 6454 § 6.2):
+    esquema e host em minúsculas, sem a porta 443."""
+    parts = urlsplit(url)
+    host = parts.hostname or ""
+    if ":" in host:  # IPv6 volta entre colchetes
+        host = f"[{host}]"
+    port = "" if parts.port in (None, 443) else f":{parts.port}"
+    return f"https://{host}{port}"
 
 
 def _uses_example_password(url: str) -> bool:
