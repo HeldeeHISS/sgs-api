@@ -192,6 +192,13 @@ O mesmo quadro está em `specs/005-exportacao-relatorios-s3/tasks.md`. Cada fren
   - Bloqueada por: T0
   - Requisitos: R3.2, R3.6, R3.8, R5.4
   - Pronto quando: `tests/unit/identity/test_oidc_validacao.py` e os testes OIDC de `tests/unit/core/test_config.py` passam
+  - Nota de execução (Rafael, 25/11/2026), para a T7:
+    - `authorization_url` levanta `ServiceUnavailable` (503) com o provedor fora do ar ou com descoberta de outro emissor. A T7 decide se `GET /auth/oidc/login` responde 503 ou redireciona para `FRONTEND_URL?login_erro=oidc`: a tabela de rotas do design lista só 404 e 429.
+    - Motivos de recusa além dos do design: `iat` ausente ou no futuro dá `exp`; `sub` ausente ou longo demais dá `claims`. Claim de grupos ausente vale como nenhum grupo. Sem `name`, o nome exibido é o `username`.
+    - `azp`, quando presente, tem de ser `OIDC_CLIENT_ID` mesmo com uma audiência só. É mais estrito que o design § Portas e adaptadores, como recomenda o OIDC Core § 3.1.3.7.
+    - Ficam para a T7: o limite de 200 grupos (passo 4 do callback) e o cálculo do `code_challenge` no domínio (passo 1).
+    - `OIDC_*` e `FRONTEND_URL` vazias valem como ausentes: `OIDC_ISSUER=` desliga o OIDC.
+    - Decisões que a T7 também segue: design § Decisões de execução.
 - [x] T10. Entrada OIDC no front-end
   - Concluída em 25/11/2026 (`make check` verde). Prova: `tests/e2e_front/test_login_oidc.py`
   - Frente: B
